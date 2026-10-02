@@ -438,10 +438,10 @@ All tasks depend on Task 2.1 and own separate rule/test modules; they can run in
 ### Batch 3 Commit Checkpoint
 
 After all ten domain tasks complete:
-- [ ] `npm run typecheck` and all domain unit tests pass.
-- [ ] Pure rules have no React, browser storage, or provider imports.
-- [ ] Integrate rule-module exports in `src/domain/index.ts` only after parallel work is merged.
-- [ ] All specified rule failures are explicit typed results; failed validation does not mutate state.
+- [x] `npm run typecheck` and all domain unit tests pass.
+- [x] Pure rules have no React, browser storage, or provider imports.
+- [x] Integrate rule-module exports in `src/domain/index.ts` only after parallel work is merged.
+- [x] All specified rule failures are explicit typed results; failed validation does not mutate state.
 
 ---
 
@@ -494,8 +494,8 @@ After all ten domain tasks complete:
 
 ### Batch 4 Commit Checkpoint
 
-- [ ] `npm run typecheck` and fixture/scenario tests pass.
-- [ ] Startup and scenario data use fictional content only and do not include real member details or legal waiver text.
+- [x] `npm run typecheck` and fixture/scenario tests pass.
+- [x] Startup and scenario data use fictional content only and do not include real member details or legal waiver text.
 
 ---
 
@@ -572,8 +572,8 @@ After all ten domain tasks complete:
 
 ### Batch 5 Commit Checkpoint
 
-- [ ] `npm run lint`, `npm run typecheck`, and all unit/component tests pass.
-- [ ] Feature code has exactly one state access boundary; no local-storage, IndexedDB, service worker, or remote persistence is present.
+- [x] `npm run lint`, `npm run typecheck`, and all unit/component tests pass.
+- [x] Feature code has exactly one state access boundary; no local-storage, IndexedDB, service worker, or remote persistence is present.
 
 ---
 
@@ -811,8 +811,8 @@ All feature tasks depend on Task 5.3 and the shared UI in Task 2.2. The route re
 
 ### Batch 6 Commit Checkpoint
 
-- [ ] All feature component tests, `npm run lint`, and `npm run typecheck` pass.
-- [ ] No task has edited the app route registry; each feature module is independently importable.
+- [x] All feature component tests, `npm run lint`, and `npm run typecheck` pass.
+- [x] No task has edited the app route registry; each feature module is independently importable.
 
 ---
 
@@ -844,8 +844,8 @@ All feature tasks depend on Task 5.3 and the shared UI in Task 2.2. The route re
 
 ### Batch 7 Commit Checkpoint
 
-- [ ] Built app routes to every feature and refresh returns to fixture state.
-- [ ] The simulated/non-operational notice is persistent and no live service integrations exist.
+- [x] Built app routes to every feature and refresh returns to fixture state.
+- [x] The simulated/non-operational notice is persistent and no live service integrations exist.
 
 ---
 
@@ -944,9 +944,9 @@ Each task depends on Task 7.1 and owns its own Playwright spec file(s). Shared b
 
 ### Batch 8 Commit Checkpoint
 
-- [ ] All four Playwright specs pass against the built static app.
-- [ ] Every browser flow starts from deterministic reset/scenario state; tests use no persistent browser storage.
-- [ ] No test makes calls to identity/email providers or production endpoints.
+- [x] All four Playwright specs pass against the built static app.
+- [x] Every browser flow starts from deterministic reset/scenario state; tests use no persistent browser storage.
+- [x] No test makes calls to identity/email providers or production endpoints.
 
 ---
 
@@ -979,9 +979,9 @@ Each task depends on Task 7.1 and owns its own Playwright spec file(s). Shared b
 
 ### Batch 9 Commit Checkpoint
 
-- [ ] PR required checks and default-branch browser suite match the LLD.
-- [ ] Pages is a static demonstration only; no route or workflow deploys an operational backend.
-- [ ] Full lint, type-check, unit/component, browser, and production-build commands pass.
+- [x] PR required checks and default-branch browser suite match the LLD.
+- [x] Pages is a static demonstration only; no route or workflow deploys an operational backend.
+- [x] Full lint, type-check, unit/component, browser, and production-build commands pass.
 
 ---
 
@@ -1096,12 +1096,12 @@ This table is the single source of truth for task progress. Update the status he
 | 8.2 | Cover station layout, class type, and weekly schedule workflows | 7.1 | — | [x] |
 | 8.3 | Cover booking, waitlist, reseating, clock, and attendance workflows | 7.1 | — | [x] |
 | 8.4 | Cover email simulation, outage roster, coach privacy, and accessibility | 7.1 | — | [x] |
-| 9.1 | Enforce PR checks and safe GitHub Pages publication | 1.1, 8.1–8.4 | — | [ ] |
+| 9.1 | Enforce PR checks and safe GitHub Pages publication | 1.1, 8.1–8.4 | — | [x] |
 
 **Eligible tasks** (status `[ ]`, prerequisites complete, no conflicting task `[~]`):
-- Task 9.1: Enforce PR checks and safe GitHub Pages publication
+- None; all tasks are complete.
 
-**Progress:** 33 / 34 tasks complete
+**Progress:** 34 / 34 tasks complete
 
 ---
 
