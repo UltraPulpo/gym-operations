@@ -1066,16 +1066,16 @@ This table is the single source of truth for task progress. Update the status he
 | 1.1 | Establish the static app and test toolchain | None | — | [x] |
 | 2.1 | Define domain types and typed action/result contracts | 1.1 | — | [x] |
 | 2.2 | Build shared controls and status/error presentation | 1.1 | — | [x] |
-| 3.1 | Implement invitation and member lifecycle rules | 2.1 | — | [ ] |
-| 3.2 | Implement station capacity and layout rules | 2.1 | — | [ ] |
-| 3.3 | Implement weekly template expansion and schedule lifecycle rules | 2.1 | — | [ ] |
-| 3.4 | Implement booking, FIFO promotion, cancellation, and reseating rules | 2.1, 3.1–3.3, 3.6–3.8 | — | [ ] |
-| 3.5 | Implement check-in, attendance corrections, and class-end transitions | 2.1 | — | [ ] |
-| 3.6 | Implement demo role capability selectors | 2.1 | — | [ ] |
-| 3.7 | Implement waiver version and signature rules | 2.1 | — | [ ] |
-| 3.8 | Implement class-type validation and snapshots | 2.1 | — | [ ] |
-| 3.9 | Implement simulated notification outcomes and resend | 2.1 | — | [ ] |
-| 3.10 | Implement coach profile ownership and visibility | 2.1, 3.6 | — | [ ] |
+| 3.1 | Implement invitation and member lifecycle rules | 2.1 | — | [x] |
+| 3.2 | Implement station capacity and layout rules | 2.1 | — | [x] |
+| 3.3 | Implement weekly template expansion and schedule lifecycle rules | 2.1 | — | [x] |
+| 3.4 | Implement booking, FIFO promotion, cancellation, and reseating rules | 2.1, 3.1–3.3, 3.6–3.8 | — | [x] |
+| 3.5 | Implement check-in, attendance corrections, and class-end transitions | 2.1 | — | [x] |
+| 3.6 | Implement demo role capability selectors | 2.1 | — | [x] |
+| 3.7 | Implement waiver version and signature rules | 2.1 | — | [x] |
+| 3.8 | Implement class-type validation and snapshots | 2.1 | — | [x] |
+| 3.9 | Implement simulated notification outcomes and resend | 2.1 | — | [x] |
+| 3.10 | Implement coach profile ownership and visibility | 2.1, 3.6 | — | [x] |
 | 4.1 | Create deterministic fictional demo fixtures | 3.1–3.10 | — | [ ] |
 | 4.2 | Add complete resettable edge-case scenarios | 4.1 | — | [ ] |
 | 5.1 | Implement typed reducer actions and deterministic transitions | 3.1–3.10, 4.1–4.2 | — | [ ] |
@@ -1099,9 +1099,9 @@ This table is the single source of truth for task progress. Update the status he
 | 9.1 | Enforce PR checks and safe GitHub Pages publication | 1.1, 8.1–8.4 | — | [ ] |
 
 **Eligible tasks** (status `[ ]`, prerequisites complete, no conflicting task `[~]`):
-- Tasks 3.1-3.3 and 3.5-3.9: Independent pure domain rules
+- Task 4.1: Create deterministic fictional demo fixtures
 
-**Progress:** 3 / 34 tasks complete
+**Progress:** 13 / 34 tasks complete
 
 ---
 

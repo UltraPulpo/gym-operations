@@ -1,6 +1,7 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import * as publicContract from './index';
 import type {
+  ApplyWeeklyTemplateInput,
   AcceptedAction,
   ActionOf,
   AttendanceCorrection,
@@ -8,10 +9,14 @@ import type {
   AttendanceRecord,
   Booking,
   BookingStatus,
+  CapabilityTarget,
   CheckInState,
+  ClassTypeChanges,
   ClassStatus,
   ClassType,
+  ClassTypeInput,
   CoachProfile,
+  CoachProfileView,
   DemoAction,
   DemoActor,
   DemoScenario,
@@ -23,13 +28,17 @@ import type {
   LocalDate,
   LocalTime,
   Member,
+  MembershipAction,
   MemberId,
   MemberStatus,
   NotificationEvent,
+  NotificationInput,
   NotificationRecord,
   NotificationAttempt,
+  PublishedClassBatch,
   PublicCoachProfile,
   ScheduledClass,
+  ScheduledClassEdit,
   StaffAccount,
   StaffId,
   StaffRole,
@@ -394,8 +403,83 @@ function negativeAssertions(
 void negativeAssertions;
 
 describe('stable domain contracts', () => {
-  it('publishes no runtime behavior from the domain barrel', () => {
-    expect(Object.keys(publicContract)).toEqual([]);
+  it('publishes all domain rule functions from the domain barrel', () => {
+    expect(Object.keys(publicContract).sort()).toEqual(
+      [
+        'advanceAttendanceClock',
+        'applyWeeklyTemplate',
+        'bookStation',
+        'cancelBooking',
+        'cancelClass',
+        'cancelClassReservations',
+        'checkIn',
+        'checkMemberEligibility',
+        'completeClass',
+        'correctAttendance',
+        'countActiveMembers',
+        'createClassType',
+        'createClassTypeSnapshot',
+        'createDraftClass',
+        'createNotificationRecord',
+        'createStaffAccount',
+        'createStation',
+        'createWaiverVersion',
+        'createWeeklyTemplate',
+        'deactivateStaffAccount',
+        'deleteDraftClass',
+        'deleteWeeklyTemplate',
+        'editScheduledClass',
+        'expireInvitations',
+        'getClassCapacity',
+        'getCurrentWaiver',
+        'getWaiverCompliance',
+        'joinWaitlist',
+        'leaveWaitlist',
+        'moveBooking',
+        'moveOwnBooking',
+        'placeStation',
+        'publishClasses',
+        'publishWaiver',
+        'recordManualAttendance',
+        'recordNotification',
+        'releaseClasses',
+        'removeBooking',
+        'requireCapability',
+        'requireCurrentWaiver',
+        'resendNotification',
+        'reverseCheckIn',
+        'selectClassLayout',
+        'selectCoachClassHistory',
+        'selectCoachProfile',
+        'selectDemoCapabilities',
+        'selectReleasedClasses',
+        'setLayoutOrientation',
+        'signWaiver',
+        'swapBookings',
+        'updateClassType',
+        'updateCoachProfile',
+        'updateOwnCoachProfile',
+        'updateStaffAccount',
+        'updateStation',
+        'updateWeeklyTemplate',
+        'validateClassCapacity',
+        'validateClassType',
+        'validateMembershipAction',
+        'validateNotificationAction',
+      ].sort(),
+    );
+  });
+
+  it('publishes capability-specific helper types from the domain barrel', () => {
+    expectTypeOf<MembershipAction>().not.toBeAny();
+    expectTypeOf<ApplyWeeklyTemplateInput>().not.toBeAny();
+    expectTypeOf<ScheduledClassEdit>().not.toBeAny();
+    expectTypeOf<PublishedClassBatch>().not.toBeAny();
+    expectTypeOf<CapabilityTarget>().not.toBeAny();
+    expectTypeOf<NotificationInput>().not.toBeAny();
+    expectTypeOf<ClassTypeInput>().not.toBeAny();
+    expectTypeOf<ClassTypeChanges>().not.toBeAny();
+    expectTypeOf<CoachProfileView>().not.toBeAny();
   });
 
   it('represents a complete independent scenario and all state collections', () => {
