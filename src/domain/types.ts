@@ -777,7 +777,14 @@ export interface ShortGapWarning {
   readonly targetGapMinutes: DurationMinutes;
 }
 
-export type DomainWarning = ShortGapWarning;
+export interface WaitlistNotPromotedWarning {
+  readonly category: 'waitlistNotPromoted';
+  readonly message: string;
+  readonly classId: ClassId;
+  readonly reason: 'noEligibleWaiter';
+}
+
+export type DomainWarning = ShortGapWarning | WaitlistNotPromotedWarning;
 
 /** Requests are unvalidated. Only rules may turn them into accepted transitions. */
 export interface DemoActionPayloads {

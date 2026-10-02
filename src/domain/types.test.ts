@@ -438,6 +438,7 @@ describe('stable domain contracts', () => {
         'moveBooking',
         'moveOwnBooking',
         'placeStation',
+        'promoteWaitlist',
         'publishClasses',
         'publishWaiver',
         'recordManualAttendance',

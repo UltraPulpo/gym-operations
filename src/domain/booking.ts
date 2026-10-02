@@ -15,6 +15,7 @@ import type {
   DomainError,
   DomainResource,
   DomainResult,
+  DomainWarning,
   IneligibilityReason,
   MemberId,
   NotificationId,
@@ -405,22 +406,63 @@ function beforePromotionCutoff(
   };
 }
 
+export type WaitlistPromotionResult = {
+  readonly changes: DemoStateChanges;
+  readonly warnings: readonly DomainWarning[];
+} & (
+  | { readonly promoted: true; readonly bookingId: BookingId }
+  | {
+      readonly promoted: false;
+      readonly reason:
+        'cutoffReached' | 'stationUnavailable' | 'noEligibleWaiter';
+    }
+);
+
+function notPromoted(
+  classId: ClassId,
+  reason: Extract<WaitlistPromotionResult, { promoted: false }>['reason'],
+  changes: DemoStateChanges = {},
+): DomainResult<WaitlistPromotionResult> {
+  return {
+    success: true,
+    value: {
+      promoted: false,
+      reason,
+      changes,
+      warnings:
+        reason === 'noEligibleWaiter'
+          ? [
+              {
+                category: 'waitlistNotPromoted',
+                classId,
+                reason,
+                message:
+                  'No eligible waiting member was promoted. Review the retained waitlist flags.',
+              },
+            ]
+          : [],
+    },
+  };
+}
+
 function promoteNextEligible(
   state: DemoState,
   scheduledClass: ScheduledClass,
   station: Station,
   now: UtcInstant,
-): DomainResult<DemoStateChanges> {
-  if (!station.inService) return { success: true, value: {} };
+): DomainResult<WaitlistPromotionResult> {
+  if (!station.inService)
+    return notPromoted(scheduledClass.classId, 'stationUnavailable');
   const cutoff = beforePromotionCutoff(state, scheduledClass, now);
   if (!cutoff.success) return cutoff;
-  if (!cutoff.value) return { success: true, value: {} };
+  if (!cutoff.value)
+    return notPromoted(scheduledClass.classId, 'cutoffReached');
   const assignments = validateBookingAssignments(state, scheduledClass.classId);
   if (!assignments.success) return assignments;
   if (
     assignments.value.some((booking) => booking.stationId === station.stationId)
   ) {
-    return { success: true, value: {} };
+    return notPromoted(scheduledClass.classId, 'stationUnavailable');
   }
 
   const waiting = state.waitlistEntries
@@ -512,7 +554,7 @@ function promoteNextEligible(
         item.entryId === promotedEntry.entryId ? promotedEntry : item,
       ),
     };
-    return patchWithNotification(
+    const notified = patchWithNotification(
       state,
       changes,
       {
@@ -525,17 +567,73 @@ function promoteNextEligible(
       `promotion:${bookingId.slice('booking:'.length)}`,
       now,
     );
+    return notified.success
+      ? {
+          success: true,
+          value: {
+            promoted: true,
+            bookingId,
+            changes: notified.value,
+            warnings: [],
+          },
+        }
+      : notified;
   }
 
-  if (changedFlags.size === 0) return { success: true, value: {} };
-  return {
-    success: true,
-    value: {
-      waitlistEntries: state.waitlistEntries.map(
-        (entry) => changedFlags.get(entry.entryId) ?? entry,
-      ),
-    },
-  };
+  return notPromoted(
+    scheduledClass.classId,
+    'noEligibleWaiter',
+    changedFlags.size === 0
+      ? {}
+      : {
+          waitlistEntries: state.waitlistEntries.map(
+            (entry) => changedFlags.get(entry.entryId) ?? entry,
+          ),
+        },
+  );
+}
+
+export function promoteWaitlist(
+  state: DemoState,
+  actor: DemoActor,
+  classId: ClassId,
+  stationId: StationId,
+  now: UtcInstant,
+): DomainResult<WaitlistPromotionResult> {
+  const permission = requireCapability(state, actor, 'manageWaitlists', {
+    classId,
+  });
+  if (!permission.success) return permission;
+  const window = classWindow(state, classId, now);
+  if (!window.success) return window;
+  if (now >= window.value.startsAt) {
+    return ineligible(
+      'classStarted',
+      'Waitlist promotion ends when class starts.',
+      { classId },
+    );
+  }
+  const cutoff = beforePromotionCutoff(state, window.value, now);
+  if (!cutoff.success) return cutoff;
+  if (!cutoff.value) {
+    return ineligible(
+      'waitlistCutoffReached',
+      'Manual promotion stops at or after the waitlist cutoff.',
+      { classId },
+    );
+  }
+  const assignments = validateBookingAssignments(state, classId);
+  if (!assignments.success) return assignments;
+  const station = requireAvailableStation(
+    state,
+    actor,
+    classId,
+    stationId,
+    now,
+    assignments.value,
+  );
+  if (!station.success) return station;
+  return promoteNextEligible(state, window.value, station.value, now);
 }
 
 function changeAfterFreeingStation(
@@ -555,7 +653,7 @@ function changeAfterFreeingStation(
     now,
   );
   if (!promotion.success) return promotion;
-  return { success: true, value: { ...changes, ...promotion.value } };
+  return { success: true, value: { ...changes, ...promotion.value.changes } };
 }
 
 function requireUniqueBookingId(

@@ -1078,9 +1078,9 @@ This table is the single source of truth for task progress. Update the status he
 | 3.10 | Implement coach profile ownership and visibility | 2.1, 3.6 | — | [x] |
 | 4.1 | Create deterministic fictional demo fixtures | 3.1–3.10 | — | [x] |
 | 4.2 | Add complete resettable edge-case scenarios | 4.1 | — | [x] |
-| 5.1 | Implement typed reducer actions and deterministic transitions | 3.1–3.10, 4.1–4.2 | — | [ ] |
-| 5.2 | Wire state context, selectors, validation, clock, reset, and scenario load | 5.1 | — | [ ] |
-| 5.3 | Add React test render helpers | 4.1–4.2, 5.2 | — | [ ] |
+| 5.1 | Implement typed reducer actions and deterministic transitions | 3.1–3.10, 4.1–4.2 | — | [x] |
+| 5.2 | Wire state context, selectors, validation, clock, reset, and scenario load | 5.1 | — | [x] |
+| 5.3 | Add React test render helpers | 4.1–4.2, 5.2 | — | [x] |
 | 6.1 | Build staff access management demonstration | 2.2, 3.6, 5.3 | — | [ ] |
 | 6.2 | Build member and invitation workflows | 2.2, 3.1, 3.6–3.7, 5.3 | — | [ ] |
 | 6.3 | Build waiver version and signature screens | 2.2, 3.7, 5.3 | — | [ ] |
@@ -1099,9 +1099,9 @@ This table is the single source of truth for task progress. Update the status he
 | 9.1 | Enforce PR checks and safe GitHub Pages publication | 1.1, 8.1–8.4 | — | [ ] |
 
 **Eligible tasks** (status `[ ]`, prerequisites complete, no conflicting task `[~]`):
-- Task 5.1: Implement typed reducer actions and deterministic transitions
+- Tasks 6.1-6.10: Independent feature workflows
 
-**Progress:** 15 / 34 tasks complete
+**Progress:** 18 / 34 tasks complete
 
 ---
 

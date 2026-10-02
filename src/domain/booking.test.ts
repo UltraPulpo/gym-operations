@@ -21,6 +21,7 @@ import {
   moveOwnBooking,
   removeBooking,
   swapBookings,
+  promoteWaitlist,
 } from './booking';
 import { editScheduledClass } from './scheduling';
 
@@ -637,6 +638,7 @@ describe('member booking and waitlist rules', () => {
         makeWaitlist('waitlist:eligible', memberFive, 4),
       ],
     });
+
     const result = value(
       cancelBooking(
         input,
@@ -645,7 +647,6 @@ describe('member booking and waitlist rules', () => {
         now,
       ),
     );
-
     expect(result.bookings).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -701,6 +702,201 @@ describe('member booking and waitlist rules', () => {
     ]);
   });
 
+  it('returns an explicit non-promotion result and retains every skipped review flag', () => {
+    const input = makeState({
+      members: [
+        makeMember(memberOne),
+        makeMember(memberTwo, 'inactive'),
+        makeMember(memberThree),
+        makeMember(memberFour),
+      ],
+      waiverSignatures: makeState().waiverSignatures.filter(
+        (signature) => signature.memberId !== memberThree,
+      ),
+      invitations: makeState().invitations.filter(
+        (invitation) =>
+          !('memberId' in invitation) || invitation.memberId !== memberFour,
+      ),
+      waitlistEntries: [
+        makeWaitlist('waitlist:inactive', memberTwo, 1),
+        makeWaitlist('waitlist:waiver', memberThree, 2),
+        makeWaitlist('waitlist:invitation', memberFour, 3),
+      ],
+    });
+    const before = structuredClone(input);
+    const result = value(
+      promoteWaitlist(input, frontDesk, classId, 'station:one', now),
+    );
+    expect(result.promoted).toBe(false);
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        category: 'waitlistNotPromoted',
+        classId,
+        reason: 'noEligibleWaiter',
+      }),
+    ]);
+    expect(result.changes.bookings).toBeUndefined();
+    expect(result.changes.attendance).toBeUndefined();
+    expect(result.changes.notifications).toBeUndefined();
+    expect(
+      result.changes.waitlistEntries?.map((entry) => [
+        entry.status,
+        entry.reviewFlags,
+      ]),
+    ).toEqual([
+      ['waiting', ['memberInactive']],
+      ['waiting', ['waiverOutdated']],
+      ['waiting', ['invitationNotAccepted']],
+    ]);
+    expect(input).toEqual(before);
+    const departing = makeBooking(
+      'booking:departing',
+      memberOne,
+      'station:one',
+    );
+    const automatic = value(
+      cancelBooking(
+        {
+          ...input,
+          bookings: [departing],
+          attendance: [makeAttendance(departing)],
+        },
+        { kind: 'member', memberId: memberOne },
+        departing.bookingId,
+        now,
+      ),
+    );
+    expect(automatic.waitlistEntries).toEqual(result.changes.waitlistEntries);
+    expect(automatic.bookings).toHaveLength(1);
+    expect(automatic.bookings?.[0]?.status).toBe('cancelled');
+    expect(automatic.notifications).toBeUndefined();
+  });
+
+  it('shares skipped-entry policy between automated cancellation and manual promotion', () => {
+    const booking = makeBooking('booking:departing', memberOne, 'station:one');
+    const state = makeState({
+      members: [
+        makeMember(memberOne),
+        makeMember(memberTwo, 'inactive'),
+        makeMember(memberThree),
+      ],
+      waitlistEntries: [
+        makeWaitlist('waitlist:inactive', memberTwo, 1),
+        makeWaitlist('waitlist:eligible', memberThree, 2),
+      ],
+    });
+    const manual = value(
+      promoteWaitlist(state, frontDesk, classId, 'station:one', now),
+    );
+    const automatic = value(
+      cancelBooking(
+        {
+          ...state,
+          bookings: [booking],
+          attendance: [makeAttendance(booking)],
+        },
+        { kind: 'member', memberId: memberOne },
+        booking.bookingId,
+        now,
+      ),
+    );
+    expect(manual.promoted).toBe(true);
+    expect(manual.warnings).toEqual([]);
+    expect(manual.changes.waitlistEntries).toEqual(automatic.waitlistEntries);
+    expect(manual.changes.bookings?.[0]).toEqual(automatic.bookings?.at(-1));
+    expect(manual.changes.attendance?.[0]).toEqual(
+      automatic.attendance?.at(-1),
+    );
+    expect(manual.changes.notifications).toEqual(automatic.notifications);
+  });
+
+  it('retains all-ineligible flags after automated cancellation without a phantom promotion', () => {
+    const booking = makeBooking('booking:departing', memberOne, 'station:one');
+    const input = makeState({
+      members: [makeMember(memberOne), makeMember(memberTwo, 'inactive')],
+      bookings: [booking],
+      waitlistEntries: [makeWaitlist('waitlist:inactive', memberTwo, 1)],
+    });
+    const before = structuredClone(input);
+    const result = value(
+      cancelBooking(
+        input,
+        { kind: 'member', memberId: memberOne },
+        booking.bookingId,
+        now,
+      ),
+    );
+    expect(result.bookings).toHaveLength(1);
+    expect(result.bookings?.[0]?.status).toBe('cancelled');
+    expect(result.waitlistEntries?.[0]).toMatchObject({
+      status: 'waiting',
+      reviewFlags: ['memberInactive'],
+    });
+    expect(result.notifications).toBeUndefined();
+    expect(input).toEqual(before);
+  });
+
+  it.each(['2026-10-02T16:29:59Z', '2026-10-02T16:30:00Z'] as const)(
+    'enforces the same strict manual promotion cutoff at %s',
+    (instant) => {
+      const input = makeState({
+        waitlistEntries: [makeWaitlist('waitlist:next', memberTwo, 1)],
+      });
+      const before = structuredClone(input);
+      const result = promoteWaitlist(
+        input,
+        frontDesk,
+        classId,
+        'station:one',
+        instant,
+      );
+      if (instant === '2026-10-02T16:29:59Z') {
+        const promotion = value(result);
+        expect(promotion.promoted).toBe(true);
+        expect(promotion.changes.waitlistEntries?.[0]?.status).toBe('promoted');
+      } else {
+        expect(result).toMatchObject({
+          success: false,
+          error: { reason: 'waitlistCutoffReached' },
+        });
+      }
+      expect(input).toEqual(before);
+    },
+  );
+
+  it.each(['manual', 'automatic'] as const)(
+    'rejects %s promotion atomically when notification composition is invalid',
+    (path) => {
+      const booking = makeBooking(
+        'booking:departing',
+        memberOne,
+        'station:one',
+      );
+      const input = makeState({
+        simulation: {
+          delivery: 'invalid' as DemoState['simulation']['delivery'],
+          identity: 'verified',
+        },
+        bookings: path === 'automatic' ? [booking] : [],
+        waitlistEntries: [makeWaitlist('waitlist:next', memberTwo, 1)],
+      });
+      const before = structuredClone(input);
+      const result =
+        path === 'manual'
+          ? promoteWaitlist(input, frontDesk, classId, 'station:one', now)
+          : cancelBooking(
+              input,
+              { kind: 'member', memberId: memberOne },
+              booking.bookingId,
+              now,
+            );
+      expect(result).toMatchObject({
+        success: false,
+        error: { category: 'ValidationError', fields: [{ field: 'scenario' }] },
+      });
+      expect(input).toEqual(before);
+    },
+  );
   it('does not promote at cutoff equality but promotes strictly before the cutoff', () => {
     const booking = makeBooking('booking:departing', memberOne, 'station:one');
     const input = makeState({
