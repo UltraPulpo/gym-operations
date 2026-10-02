@@ -1064,8 +1064,8 @@ This table is the single source of truth for task progress. Update the status he
 | Task | Description | Prerequisites | Conflicts | Status |
 |------|-------------|---------------|-----------|--------|
 | 1.1 | Establish the static app and test toolchain | None | — | [x] |
-| 2.1 | Define domain types and typed action/result contracts | 1.1 | — | [ ] |
-| 2.2 | Build shared controls and status/error presentation | 1.1 | — | [ ] |
+| 2.1 | Define domain types and typed action/result contracts | 1.1 | — | [x] |
+| 2.2 | Build shared controls and status/error presentation | 1.1 | — | [x] |
 | 3.1 | Implement invitation and member lifecycle rules | 2.1 | — | [ ] |
 | 3.2 | Implement station capacity and layout rules | 2.1 | — | [ ] |
 | 3.3 | Implement weekly template expansion and schedule lifecycle rules | 2.1 | — | [ ] |
@@ -1099,10 +1099,9 @@ This table is the single source of truth for task progress. Update the status he
 | 9.1 | Enforce PR checks and safe GitHub Pages publication | 1.1, 8.1–8.4 | — | [ ] |
 
 **Eligible tasks** (status `[ ]`, prerequisites complete, no conflicting task `[~]`):
-- Task 2.1: Define domain types and typed action/result contracts
-- Task 2.2: Build shared controls and status/error presentation
+- Tasks 3.1-3.3 and 3.5-3.9: Independent pure domain rules
 
-**Progress:** 1 / 34 tasks complete
+**Progress:** 3 / 34 tasks complete
 
 ---
 
