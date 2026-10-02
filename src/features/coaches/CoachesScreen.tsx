@@ -71,13 +71,19 @@ function GeneratedAvatar({
   );
 }
 
+type HeadingLevel = 2 | 3 | 4 | 5;
+
 function ProfileContent({
   coachId,
   profile,
+  headingLevel = 2,
 }: {
   coachId: StaffId;
   profile: PublicProfile | CoachProfile;
+  headingLevel?: HeadingLevel;
 }) {
+  const Heading = `h${headingLevel}` as const;
+  const Subheading = `h${headingLevel + 1}` as 'h3' | 'h4' | 'h5' | 'h6';
   const demo = useDemoState();
   const history = selectCoachClassHistory(
     demo.state,
@@ -92,10 +98,10 @@ function ProfileContent({
           name={profile.displayName}
           avatarId={profile.avatarId}
         />
-        <h2>{profile.displayName}</h2>
+        <Heading>{profile.displayName}</Heading>
       </header>
       <p>{profile.biography || 'No biography provided.'}</p>
-      <h3>Certifications</h3>
+      <Subheading>Certifications</Subheading>
       {profile.certifications.length > 0 ? (
         <ul>
           {profile.certifications.map((item, index) => (
@@ -106,7 +112,7 @@ function ProfileContent({
         <p>No certifications listed.</p>
       )}
       <section aria-label={`${profile.displayName} class history`}>
-        <h3>Class history</h3>
+        <Subheading>Class history</Subheading>
         <p>
           Past scheduled classes, ordered by start time. A class enters history
           at its end time.
@@ -134,9 +140,14 @@ function ProfileContent({
 
 export interface PublicCoachProfileProps {
   readonly coachId: StaffId;
+  /** Heading level for the coach name when nested inside another section. */
+  readonly headingLevel?: HeadingLevel;
 }
 
-export function PublicCoachProfile({ coachId }: PublicCoachProfileProps) {
+export function PublicCoachProfile({
+  coachId,
+  headingLevel,
+}: PublicCoachProfileProps) {
   const demo = useDemoState();
   const selected = selectCoachProfile(demo.state, coachId, demo.activeActor);
   if (!selected.success) return <Alert>{selected.error.message}</Alert>;
@@ -145,7 +156,11 @@ export function PublicCoachProfile({ coachId }: PublicCoachProfileProps) {
       className={styles.card}
       aria-label={`${selected.value.profile.displayName} public profile`}
     >
-      <ProfileContent coachId={coachId} profile={selected.value.profile} />
+      <ProfileContent
+        coachId={coachId}
+        profile={selected.value.profile}
+        headingLevel={headingLevel}
+      />
     </section>
   );
 }

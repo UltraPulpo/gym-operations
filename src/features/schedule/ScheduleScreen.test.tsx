@@ -525,6 +525,88 @@ describe('Schedule workflows', () => {
     ).toBeNull();
   });
 
+  it('shows members the assigned coach generated avatar, public profile and history without contact details', () => {
+    renderWithDemoState(<ScheduleScreen />, {
+      actor: { kind: 'member', memberId: ids.members.maple },
+    });
+    const classCard = screen.getByRole('article', {
+      name: `Class ${ids.classes.checkIn}`,
+    });
+    const details = within(classCard);
+
+    expect(
+      details.getByRole('img', {
+        name: 'Fictional Coach Indigo generated avatar',
+      }),
+    ).toBeInTheDocument();
+    expect(classCard).toHaveTextContent(
+      'Fictional technique coach for the demonstration.',
+    );
+    expect(classCard).toHaveTextContent('Illustrative rowing certificate');
+    expect(
+      details.getByRole('region', {
+        name: 'Fictional Coach Indigo class history',
+      }),
+    ).toHaveTextContent('Demo Technique');
+    expect(classCard.innerHTML).not.toMatch(
+      /coach-indigo@example\.invalid|555-0109|identity:/,
+    );
+  });
+
+  it('keeps the original class heading, PDT start/end and Coach label for members alongside the public coach profile', () => {
+    renderWithDemoState(<ScheduleScreen />, {
+      actor: { kind: 'member', memberId: ids.members.maple },
+    });
+    const classCard = screen.getByRole('article', {
+      name: `Class ${ids.classes.checkIn}`,
+    });
+    const details = within(classCard);
+
+    expect(classCard).toHaveTextContent('2026-10-05 09:00 PDT - 09:45 PDT');
+    expect(classCard).toHaveTextContent('Coach: Fictional Coach Indigo');
+    const headings = details.getAllByRole('heading', {
+      name: 'Demo Technique',
+    });
+    expect(headings).toHaveLength(1);
+    expect(headings[0]!.tagName).toBe('H3');
+    expect(classCard).not.toHaveTextContent(
+      '2026-10-05 09:00 (America/Los_Angeles)',
+    );
+    expect(
+      details.getByRole('img', {
+        name: 'Fictional Coach Indigo generated avatar',
+      }),
+    ).toBeInTheDocument();
+    expect(classCard.innerHTML).not.toMatch(
+      /coach-indigo@example\.invalid|555-0109|identity:/,
+    );
+  });
+
+  it('shows members PST start/end offsets and the unassigned Coach label for a released November class', async () => {
+    const view = renderWithDemoState(<ScheduleScreen />);
+    await view.user.selectOptions(
+      screen.getByLabelText('Release mode'),
+      'immediate',
+    );
+    await view.user.click(
+      screen.getByRole('button', { name: 'Save release policy' }),
+    );
+    const created = await draft(view);
+    submit(view, {
+      type: 'publishClasses',
+      payload: { classIds: [created.classId] },
+    });
+    changeActor(view, { kind: 'member', memberId: ids.members.maple });
+    const classCard = screen.getByRole('article', {
+      name: `Class ${created.classId}`,
+    });
+
+    expect(classCard).toHaveTextContent(
+      /2026-11-10 14:00 PST - \d{2}:\d{2} PST/,
+    );
+    expect(classCard).toHaveTextContent('Coach: No coach assigned');
+  });
+
   it('supports immediate, rolling and manual batch release with member-only visibility', async () => {
     const view = renderWithDemoState(<ScheduleScreen />);
     await view.user.selectOptions(

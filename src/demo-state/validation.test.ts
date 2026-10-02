@@ -762,7 +762,7 @@ const routeAssertions = {
       ),
     ).toEqual([]);
     expect(next.notifications.slice(before.notifications.length)).toHaveLength(
-      3,
+      6,
     );
   },
   bookStation: (next, before) => {
@@ -967,6 +967,65 @@ const routeAssertions = {
 } satisfies Record<DemoActionType, RouteAssertion>;
 
 describe('validateAction', () => {
+  it.each(['success', 'failure'] as const)(
+    'composes one cancellation notification per active booked or waiting member with delivery %s',
+    (delivery) => {
+      const initial = createInitialDemoState();
+      const waiter = initial.waitlistEntries.find(
+        (entry) => entry.entryId === ids.waitlist.willow,
+      )!;
+      const state: DemoState = {
+        ...initial,
+        simulation: { ...initial.simulation, delivery },
+        waitlistEntries: [
+          ...initial.waitlistEntries,
+          { ...waiter, entryId: 'waitlist:duplicate-willow' },
+          {
+            ...waiter,
+            entryId: 'waitlist:also-booked-maple',
+            memberId: ids.members.maple,
+          },
+        ],
+      };
+      const before = structuredClone(state);
+      const accepted = expectSuccess(
+        validateAction(
+          state,
+          state.activeActor,
+          {
+            type: 'cancelClass',
+            payload: {
+              classId: ids.classes.full,
+              reason: 'Fictional room closure',
+            },
+          },
+          state.clock.now,
+        ),
+      );
+      const notifications = accepted.changes.notifications?.filter(
+        (record) =>
+          !state.notifications.some(
+            (existing) => existing.notificationId === record.notificationId,
+          ),
+      );
+      expect(notifications).toHaveLength(6);
+      expect(notifications?.map((record) => record.recipient)).toEqual(
+        ['maple', 'cedar', 'birch', 'moss', 'aspen', 'willow'].map((name) => ({
+          kind: 'member',
+          memberId: `member:${name}`,
+          email: `${name}@example.invalid`,
+        })),
+      );
+      for (const record of notifications ?? []) {
+        expect(record).toMatchObject({
+          event: { type: 'classCancelled', classId: ids.classes.full },
+          status: delivery === 'success' ? 'sent' : 'failed',
+        });
+      }
+      expect(state).toEqual(before);
+    },
+  );
+
   it('explains the fixed timezone rule without implementation tracking references', () => {
     const state = createInitialDemoState();
     expect(

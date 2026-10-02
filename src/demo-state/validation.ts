@@ -530,14 +530,21 @@ function composeClassCancellationNotifications(
   now: UtcInstant,
 ): DomainResult<DemoStateChanges> {
   let mergedChanges = changes;
-  const bookedMembers = state.bookings.filter(
-    (booking) => booking.classId === classId && booking.status === 'booked',
-  );
-  for (const booking of bookedMembers) {
-    const member = state.members.find(
-      (record) => record.memberId === booking.memberId,
-    );
-    if (!member) return unavailable('member', booking.memberId);
+  const affectedMemberIds = new Set([
+    ...state.bookings
+      .filter(
+        (booking) => booking.classId === classId && booking.status === 'booked',
+      )
+      .map((booking) => booking.memberId),
+    ...state.waitlistEntries
+      .filter(
+        (entry) => entry.classId === classId && entry.status === 'waiting',
+      )
+      .map((entry) => entry.memberId),
+  ]);
+  for (const memberId of affectedMemberIds) {
+    const member = state.members.find((record) => record.memberId === memberId);
+    if (!member) return unavailable('member', memberId);
     const updatedState = mergeChanges(state, mergedChanges);
     const notification = composeNotification(
       state,

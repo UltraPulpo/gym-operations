@@ -118,6 +118,13 @@ that contract; feature callers must use the store's validated dispatch boundary.
 
 Notification records are stored in state. Delivery failures never roll back the business change that triggered them; they simply produce a failed notification record that staff can resend.
 
+Class cancellation notifies each unique member with an active booking or waiting
+entry in the pre-cancellation snapshot, including ineligible waiters. Historical
+cancelled/left/promoted entries do not add recipients. Reservations are retained
+as cancelled without promotions. Untouched, unchecked booking-owned attendance
+changes from booked to cancelled; check-in, corrections, resolved outcomes, and
+staff/manual attendance records remain unchanged.
+
 Manual promotion and automatic promotion after cancellation/removal/reseating reuse
 one pure FIFO policy in `src\domain\booking.ts`. The domain
 `promoteWaitlist(state, actor, classId, stationId, now)` returns

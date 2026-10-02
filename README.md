@@ -50,6 +50,20 @@ deep-link reload, unknown-route recovery by keyboard, and axe checks at desktop
 and tablet widths. Automated axe results are not a claim of WCAG conformance.
 Reports and traces are ignored by Git.
 
+For concurrent checks against an existing build, assign each run a distinct
+`PLAYWRIGHT_PORT` (for example, 4174 through 4177) and output directory:
+
+```powershell
+$env:PLAYWRIGHT_PORT = '4174'
+npx playwright test starter.spec.ts --reporter=list --output=test-results/task8a
+Remove-Item Env:PLAYWRIGHT_PORT
+```
+
+`PLAYWRIGHT_PORT` defaults to 4173 when unset; explicit values must be integers
+from 1 to 65535 or configuration fails. Each run still starts its own strict-port
+preview server without reusing an existing server. `--reporter=list` avoids a
+shared HTML report.
+
 For manual preview:
 
 ```powershell

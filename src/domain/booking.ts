@@ -1206,6 +1206,13 @@ export function cancelClassReservations(
       'Apply class cancellation bookkeeping after the class is cancelled.',
     );
   }
+  const cancelledAttendanceIds = new Set(
+    state.bookings
+      .filter(
+        (booking) => booking.classId === classId && booking.status === 'booked',
+      )
+      .map((booking) => booking.attendanceRecordId),
+  );
   return {
     success: true,
     value: {
@@ -1228,6 +1235,16 @@ export function cancelClassReservations(
               reason: 'classCancelled',
             }
           : entry,
+      ),
+      attendance: state.attendance.map((record): AttendanceRecord =>
+        cancelledAttendanceIds.has(record.attendanceId) &&
+        record.classId === classId &&
+        record.source.kind === 'booking' &&
+        record.currentOutcome === 'booked' &&
+        record.checkIn.status === 'notCheckedIn' &&
+        record.corrections.length === 0
+          ? { ...record, currentOutcome: 'cancelled' }
+          : record,
       ),
     },
   };

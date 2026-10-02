@@ -7,6 +7,168 @@ import { setClockPresetAction } from './clock';
 import { expectSuccess, withActor } from './test-helpers';
 
 describe('demo-state store', () => {
+  it.each(['success', 'failure'] as const)(
+    'commits full-class cancellation and all six notifications despite delivery %s',
+    (delivery) => {
+      const initial = createInitialDemoState();
+      const state = {
+        ...initial,
+        simulation: { ...initial.simulation, delivery },
+      };
+      const store = createDemoStore(state);
+      const before = store.getSnapshot();
+      const activeBookings = before.state.bookings.filter(
+        (booking) =>
+          booking.classId === ids.classes.full && booking.status === 'booked',
+      );
+      const activeWaiters = before.state.waitlistEntries.filter(
+        (entry) =>
+          entry.classId === ids.classes.full && entry.status === 'waiting',
+      );
+      const listener = vi.fn();
+      store.subscribe(listener);
+      expectSuccess(
+        store.submit({
+          type: 'cancelClass',
+          payload: {
+            classId: ids.classes.full,
+            reason: 'Fictional room closure',
+          },
+        }),
+      );
+      const after = store.getSnapshot().state;
+      expect(after.bookings).toEqual(
+        before.state.bookings.map((booking) =>
+          activeBookings.includes(booking)
+            ? {
+                ...booking,
+                status: 'cancelled',
+                cancelledAt: before.state.clock.now,
+                cancellationReason: 'classCancelled',
+              }
+            : booking,
+        ),
+      );
+      expect(after.waitlistEntries).toEqual(
+        before.state.waitlistEntries.map((entry) =>
+          activeWaiters.includes(entry)
+            ? {
+                ...entry,
+                status: 'cancelled',
+                cancelledAt: before.state.clock.now,
+                reason: 'classCancelled',
+              }
+            : entry,
+        ),
+      );
+      expect(
+        after.notifications.slice(before.state.notifications.length),
+      ).toEqual(
+        expect.arrayContaining(
+          [
+            ids.members.maple,
+            ids.members.cedar,
+            ids.members.birch,
+            ids.members.moss,
+            ids.members.aspen,
+            ids.members.willow,
+          ].map((memberId) =>
+            expect.objectContaining({
+              event: { type: 'classCancelled', classId: ids.classes.full },
+              recipient: expect.objectContaining({ memberId }),
+              status: delivery === 'success' ? 'sent' : 'failed',
+            }),
+          ),
+        ),
+      );
+      expect(after.notifications).toHaveLength(
+        before.state.notifications.length + 6,
+      );
+      expect(
+        after.classes.find((item) => item.classId === ids.classes.full),
+      ).toMatchObject({ status: 'cancelled' });
+      for (const booking of activeBookings) {
+        expect(
+          after.bookings.find((item) => item.bookingId === booking.bookingId),
+        ).toMatchObject({
+          status: 'cancelled',
+          cancellationReason: 'classCancelled',
+        });
+        expect(
+          after.attendance.find(
+            (item) => item.attendanceId === booking.attendanceRecordId,
+          ),
+        ).toMatchObject({ currentOutcome: 'cancelled' });
+      }
+      for (const entry of activeWaiters) {
+        expect(
+          after.waitlistEntries.find((item) => item.entryId === entry.entryId),
+        ).toMatchObject({
+          status: 'cancelled',
+          reason: 'classCancelled',
+          reviewFlags: entry.reviewFlags,
+        });
+      }
+      expect(after.bookings).toHaveLength(before.state.bookings.length);
+      expect(after.attendance).toHaveLength(before.state.attendance.length);
+      expect(
+        after.notifications.slice(0, before.state.notifications.length),
+      ).toEqual(before.state.notifications);
+      expect(after.revision).toBe(before.state.revision + 1);
+      expect(listener).toHaveBeenCalledOnce();
+      expect(before.state).toEqual(state);
+      const cancelledClass = after.classes.find(
+        (item) => item.classId === ids.classes.full,
+      )!;
+      expectSuccess(store.advanceClock(cancelledClass.endsAt));
+      expect(
+        store
+          .getSnapshot()
+          .state.attendance.filter(
+            (record) => record.classId === ids.classes.full,
+          ),
+      ).toEqual(
+        after.attendance.filter(
+          (record) => record.classId === ids.classes.full,
+        ),
+      );
+      expect(store.getSnapshot().state.notifications).toEqual(
+        after.notifications,
+      );
+    },
+  );
+
+  it('rejects cancellation with an unavailable waiting recipient without committing a partial transition', () => {
+    const initial = createInitialDemoState();
+    const store = createDemoStore({
+      ...initial,
+      members: initial.members.filter(
+        (member) => member.memberId !== ids.members.moss,
+      ),
+    });
+    const before = store.getSnapshot();
+    const listener = vi.fn();
+    store.subscribe(listener);
+    expect(
+      store.submit({
+        type: 'cancelClass',
+        payload: {
+          classId: ids.classes.full,
+          reason: 'Fictional room closure',
+        },
+      }),
+    ).toMatchObject({
+      success: false,
+      error: {
+        category: 'DemoUnavailableState',
+        resource: 'member',
+        resourceId: ids.members.moss,
+      },
+    });
+    expect(store.getSnapshot()).toBe(before);
+    expect(listener).not.toHaveBeenCalled();
+  });
+
   it.each(['actor', 'time', 'changes', 'warnings'] as const)(
     'rejects a tampered %s envelope without notifying or changing the snapshot',
     (field) => {

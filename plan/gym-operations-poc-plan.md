@@ -1092,16 +1092,16 @@ This table is the single source of truth for task progress. Update the status he
 | 6.9 | Build coach profile views and edit controls | 2.2, 3.6, 3.10, 5.3 | — | [x] |
 | 6.10 | Build illustrative Admin settings screen | 2.2, 5.3 | — | [x] |
 | 7.1 | Wire overview, shell, navigation, routes, scenarios, and error boundary | 6.1–6.10, 5.3 | — | [x] |
-| 8.1 | Cover staff roles, invitation acceptance, and waiver workflows | 7.1 | — | [ ] |
-| 8.2 | Cover station layout, class type, and weekly schedule workflows | 7.1 | — | [ ] |
-| 8.3 | Cover booking, waitlist, reseating, clock, and attendance workflows | 7.1 | — | [ ] |
-| 8.4 | Cover email simulation, outage roster, coach privacy, and accessibility | 7.1 | — | [ ] |
+| 8.1 | Cover staff roles, invitation acceptance, and waiver workflows | 7.1 | — | [x] |
+| 8.2 | Cover station layout, class type, and weekly schedule workflows | 7.1 | — | [x] |
+| 8.3 | Cover booking, waitlist, reseating, clock, and attendance workflows | 7.1 | — | [x] |
+| 8.4 | Cover email simulation, outage roster, coach privacy, and accessibility | 7.1 | — | [x] |
 | 9.1 | Enforce PR checks and safe GitHub Pages publication | 1.1, 8.1–8.4 | — | [ ] |
 
 **Eligible tasks** (status `[ ]`, prerequisites complete, no conflicting task `[~]`):
-- Tasks 8.1-8.4: Independent browser workflow coverage
+- Task 9.1: Enforce PR checks and safe GitHub Pages publication
 
-**Progress:** 29 / 34 tasks complete
+**Progress:** 33 / 34 tasks complete
 
 ---
 

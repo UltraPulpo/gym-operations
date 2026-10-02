@@ -1561,8 +1561,100 @@ describe('staff removal and reseating rules', () => {
         reason: 'classCancelled',
       }),
     ]);
-    expect(result.attendance).toBeUndefined();
+    expect(result.attendance).toEqual([
+      { ...makeAttendance(booking), currentOutcome: 'cancelled' },
+    ]);
     expect(input.attendance).toEqual([makeAttendance(booking)]);
     expect(result.notifications).toBeUndefined();
+  });
+
+  it('resolves only untouched booking-owned attendance and preserves check-in, corrections, manual records and unrelated history', () => {
+    const bookings = Array.from({ length: 7 }, (_, index) =>
+      makeBooking(`booking:cancel-${index}`, memberOne, 'station:one'),
+    );
+    const correction: AttendanceRecord['corrections'][number] = {
+      correctionId: 'correction:preserved',
+      staffId: 'staff:admin',
+      previousOutcome: 'attended',
+      newOutcome: 'booked',
+      recordedAt: now,
+      reason: 'Fictional correction',
+    };
+    const attendance: readonly AttendanceRecord[] = [
+      makeAttendance(bookings[0]!),
+      {
+        ...makeAttendance(bookings[1]!),
+        checkIn: { status: 'checkedIn', checkedInAt: now, checkedInBy: admin },
+      },
+      { ...makeAttendance(bookings[2]!), corrections: [correction] },
+      {
+        ...makeAttendance(bookings[3]!),
+        source: {
+          kind: 'manualOutage',
+          staffId: 'staff:admin',
+          recordedAt: now,
+        },
+      },
+      { ...makeAttendance(bookings[4]!), currentOutcome: 'attended' },
+      {
+        ...makeAttendance(bookings[5]!),
+        source: { kind: 'staff', staffId: 'staff:admin', recordedAt: now },
+      },
+      makeAttendance(bookings[6]!),
+      {
+        ...makeAttendance(
+          makeBooking(
+            'booking:other-class',
+            memberTwo,
+            'station:two',
+            'class:other',
+          ),
+        ),
+      },
+      {
+        attendanceId: 'attendance:manual-unlinked',
+        classId,
+        memberId: memberTwo,
+        currentOutcome: 'booked',
+        checkIn: { status: 'notCheckedIn' },
+        source: {
+          kind: 'manualOutage',
+          staffId: 'staff:admin',
+          recordedAt: now,
+        },
+        corrections: [],
+      },
+    ];
+    const input = makeState({
+      bookings: bookings.map((booking, index): Booking =>
+        index === 6
+          ? {
+              ...booking,
+              status: 'cancelled',
+              cancelledAt: now,
+              cancellationReason: 'member',
+            }
+          : booking,
+      ),
+      attendance,
+      classes: [
+        makeClass({
+          status: 'cancelled',
+          cancelledAt: now,
+          cancellationReason: 'Fictional room closure',
+        }),
+      ],
+    });
+    const before = structuredClone(input);
+    const changes = value(cancelClassReservations(input, classId, now));
+    expect(changes.attendance).toEqual([
+      { ...attendance[0], currentOutcome: 'cancelled' },
+      ...attendance.slice(1),
+    ]);
+    expect(input).toEqual(before);
+    const repeated = value(
+      cancelClassReservations({ ...input, ...changes }, classId, now),
+    );
+    expect(repeated).toEqual(changes);
   });
 });

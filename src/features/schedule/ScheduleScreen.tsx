@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 import { DateTime } from 'luxon';
+import { PublicCoachProfile } from '../coaches';
 import {
   selectClasses,
   selectCoachProfile,
@@ -824,12 +825,16 @@ function ScheduleWorkspace() {
                   : (item.coachId ?? 'No coach assigned')}
               </p>
               {coach && !coach.success && <Alert>{coach.error.message}</Alert>}
-              {coach?.success && (
-                <p>
-                  {coach.value.profile.biography}{' '}
-                  {coach.value.profile.certifications.join(', ')}
-                </p>
-              )}
+              {coach?.success &&
+                item.coachId &&
+                (demo.activeActor.kind === 'member' ? (
+                  <PublicCoachProfile coachId={item.coachId} headingLevel={4} />
+                ) : (
+                  <p>
+                    {coach.value.profile.biography}{' '}
+                    {coach.value.profile.certifications.join(', ')}
+                  </p>
+                ))}
               {canManage && (
                 <>
                   <p>
