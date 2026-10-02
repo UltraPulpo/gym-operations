@@ -1,0 +1,46 @@
+:global(body) {
+  margin: 0;
+  background: #f3f5f7;
+  color: #172b3a;
+  font-family: system-ui, sans-serif;
+  line-height: 1.6;
+}
+
+:global(*) {
+  box-sizing: border-box;
+}
+
+.app {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: clamp(1rem, 4vw, 3rem);
+}
+
+.boundary {
+  padding: 0.75rem 1rem;
+  border: 2px solid #7a3900;
+  border-radius: 0.25rem;
+  background: #fff0d6;
+  color: #542700;
+  font-weight: 700;
+}
+
+.navigation a {
+  display: inline-block;
+  padding: 0.5rem;
+  color: #154d80;
+  text-underline-offset: 0.2em;
+}
+
+.navigation a:focus-visible {
+  outline: 3px solid #154d80;
+  outline-offset: 3px;
+}
+
+.content {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  border: 1px solid #697c8b;
+  border-radius: 0.25rem;
+  background: #ffffff;
+}
