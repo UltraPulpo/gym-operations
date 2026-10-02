@@ -7,16 +7,16 @@ This document preserves requirements that are related to Fitness Junkie but are 
 ## Release Boundaries
 
 - The gym operations application owns gym records and rules: member status, invitations, waivers, schedules, bookings, waitlists, station assignments, notifications, and attendance.
-- The mobile application is a separate release with its own requirements. It will provide member-facing flows and synchronize with the shared member account and gym operations system.
-- Workout-metric collection and processing are separate from gym operations. The rudimentary member profile may be extended to store metrics in a future release, but this document does not define a v1 metric schema or require v1 metric storage.
+- The mobile application is a separate release with its own requirements. Gym Operations owns the stable gym-member record and identifier; whether the mobile or metrics application links to it, uses the same authentication provider, or synchronizes profile fields is undecided and SHALL be specified before integration.
+- Workout-metric collection and processing are separate from gym operations. Gym-member records are designed to support future extensions through their stable internal identifiers, but Gym Operations V1 does not store metrics or placeholder metric fields. Future metric ownership, schema, and synchronization require separate requirements.
 - The room hub is a separate, parallel effort. Any hub integration and class-performance metrics require their own release specification.
 
 ## A. Member Mobile Application
 
 The following member-facing capabilities were identified for a separate mobile-app requirements document:
 
-- Account sign-up and sign-in, including use of the shared member account and one identity for personal and gym use.
-- Profile creation and editing. Gym profile and membership changes must synchronize through the shared account/integration boundary.
+- Account sign-up and sign-in, including the external authentication provider and whether members use one identity for personal and gym use. Gym Operations requires external authentication for live access but does not assume a particular provider or shared account.
+- Profile creation and editing. Gym Operations owns its stable member profile and gym membership status. Any synchronization or account linking with a mobile/metrics application must be defined by a separate integration decision.
 - Invitation acceptance, adult-eligibility attestation, and digital waiver signing.
 - Landing view showing the next class, last class, and today's classes.
 - Class schedule and detail views, including class type details, coach information, and what-to-bring notes.
@@ -27,7 +27,7 @@ The following member-facing capabilities were identified for a separate mobile-a
 - Account deletion interaction and coordination with the retention/anonymization policy for gym records, which remains an owner/legal decision.
 - Personal rowing-log functionality already associated with the existing member experience, specified separately from gym operations.
 
-The mobile-app specification must define client behavior and synchronization details without duplicating or weakening the gym operations system's authorization and business rules.
+The mobile-app specification must define client behavior and, if an integration is selected, its authentication-subject mapping, account linking, and profile synchronization without duplicating or weakening the gym operations system's authorization and business rules.
 
 ## B. Personal Workout Metrics
 
@@ -35,10 +35,10 @@ Personal workout capture and metrics are separate from the gym operations applic
 
 - Phone-to-PM5 Bluetooth Low Energy (BLE) workout capture.
 - Workout records, metrics, synchronization, offline capture, and personal rowing history.
-- Storage and presentation of member metrics in the shared member profile or associated workout records.
+- Storage and presentation of member metrics linked to a stable member identity, with ownership and the relationship to Gym Operations records specified by the future metrics design.
 - Data ownership, privacy, retention, and account-deletion behavior for workout data.
 
-No workout metric is collected, calculated, imported, displayed, or attributed by the gym operations release. The profile's future extensibility is not a requirement to create placeholder metric values or to collect metrics now.
+No workout metric is collected, calculated, imported, displayed, or attributed by the gym operations release. The stable gym-member identifier provides a possible future linkage point; it is not a requirement to create placeholder metric values or to collect metrics now.
 
 ## C. Room Hub and Class-Performance Metrics
 

@@ -4,7 +4,7 @@
 
 Fitness Junkie Gym Operations supports the launch and day-to-day running of a single-location, invite-only gym trial centered on small-group rowing classes. The gym operations system manages staff, member profiles and access, stations, class definitions, schedules, bookings, waitlists, notifications, and attendance. Member-facing app screens and workflows are a separate release with separate requirements; this document specifies the gym operations capabilities and integration needs those clients will use.
 
-The trial is free and has no membership fees, billing, or automatic no-show penalties. Member profiles are associated with the shared member account and synchronized with the separately released mobile app. The profile model may be extended for metrics in the future, but collecting, calculating, displaying, or attributing workout metrics is not part of these gym operations requirements. Mobile-app and future metrics details are tracked in [Deferred Mobile and Metrics Requirements](gym-operations-deferred-requirements.md). Station assignments and the current PM5 association establish a foundation for a separately planned room hub.
+The trial is free and has no membership fees, billing, or automatic no-show penalties. Gym Operations owns a stable member profile record for invitations, eligibility, bookings, waivers, and attendance. Authentication is provided by an external identity provider; integration with the mobile app, metrics app, or a shared account service is undecided and SHALL NOT be assumed. The member profile SHALL be extensible using its stable internal identifier, but V1 SHALL NOT collect, calculate, import, display, or associate workout metrics. Mobile-app and future metrics details are tracked in [Deferred Mobile and Metrics Requirements](gym-operations-deferred-requirements.md). Station assignments and the current PM5 association establish a foundation for a separately planned room hub.
 
 ## 2. Core Concepts
 
@@ -12,7 +12,7 @@ The trial is free and has no membership fees, billing, or automatic no-show pena
 
 | Term | Definition |
 |------|------------|
-| **Member** | A person with a shared member account who has accepted a gym invitation and met the current waiver requirement. |
+| **Member** | A person with a gym-owned member record who has accepted a gym invitation, completed the adult attestation, and met the current waiver requirement. A pending member is inactive and cannot book or check in. |
 | **Trial** | The free, invite-only, volunteer-style operating period before memberships and payments are introduced. |
 | **Station** | A friendly-labeled RowErg position in the gym, such as station #15. A station is the unit of class capacity. |
 | **Station layout** | A simple staff-maintained schematic showing the relative positions of labeled stations in the gym room; it is not a scale drawing or a photo. |
@@ -34,7 +34,8 @@ The trial is free and has no membership fees, billing, or automatic no-show pena
 
 ```mermaid
 erDiagram
-    MEMBER ||--o{ WAIVER_SIGNATURE : signs
+    GYM_MEMBER o|--o{ INVITATION : accepts
+    GYM_MEMBER ||--o{ WAIVER_SIGNATURE : signs
     WAIVER_VERSION ||--o{ WAIVER_SIGNATURE : identifies
     CLASS_TYPE ||--o{ SCHEDULED_CLASS : defines
     COACH o|--o{ SCHEDULED_CLASS : leads
@@ -42,12 +43,12 @@ erDiagram
     CLASS_TYPE ||--o{ TEMPLATE_ENTRY : references
     COACH o|--o{ TEMPLATE_ENTRY : assigned_to
     SCHEDULED_CLASS ||--o{ BOOKING : has
-    MEMBER ||--o{ BOOKING : makes
+    GYM_MEMBER ||--o{ BOOKING : makes
     STATION ||--o{ BOOKING : reserved_by
     SCHEDULED_CLASS ||--o{ WAITLIST_ENTRY : queues
-    MEMBER ||--o{ WAITLIST_ENTRY : joins
+    GYM_MEMBER ||--o{ WAITLIST_ENTRY : joins
     SCHEDULED_CLASS ||--o{ ATTENDANCE_RECORD : tracks
-    MEMBER ||--o{ ATTENDANCE_RECORD : attends
+    GYM_MEMBER ||--o{ ATTENDANCE_RECORD : attends
     STATION ||--o| PM5_ASSIGNMENT : currently_uses
 ```
 
@@ -69,32 +70,36 @@ erDiagram
 #### FR-3.1.2 Staff account control
 - Admins SHALL be able to create, update, and deactivate staff access.
 - The system SHALL prevent staff from performing actions outside their assigned roles.
+- Gym Operations SHALL own staff records, active status, and fixed-role assignments. Live staff authentication SHALL use an external identity provider; Gym Operations SHALL NOT store staff passwords. Each staff record SHALL be associated with an authenticated provider subject. The provider and integration protocol are implementation decisions.
 
 ### 3.2 Member Invitations and Access
 
 #### FR-3.2.1 Invitation-based membership
-- Admins and Front Desk staff SHALL be able to invite a person by email whether or not that person already has a shared member account.
-- An invitation SHALL be redeemable by linking to a newly created account or signing in to the person's existing account through an authorized member-facing client.
-- Invitation acceptance SHALL require the person to attest to being at least 18 years old. Authorized staff MAY correct or deny eligibility; v1 SHALL NOT collect identity documents for age verification.
-- The system SHALL maintain one gym-member status and profile per person on the shared member account; it SHALL NOT create a separate gym identity.
-- Gym booking access SHALL require an accepted invitation, an active member status, and a signature for the current waiver version.
+- Admins and Front Desk staff SHALL be able to invite a person by email regardless of whether that person has an account in any separate mobile or metrics application.
+- An invitation SHALL be redeemable through a one-time, expiring email link that verifies control of the invited email address. The invitation link SHALL NOT itself establish an ongoing authenticated session.
+- Ongoing member actions SHALL require authentication through an external identity provider. Gym Operations SHALL own gym-member identity and SHALL NOT store member passwords. The provider, sign-in experience, and any account linking or synchronization with other applications are outside this requirements document and SHALL NOT be assumed.
+- After invitation email verification and authentication, acceptance SHALL capture a display name, an explicit attestation that the person is at least 18 years old, and the attestation timestamp. The verified invitation email SHALL be the initial profile email. Authorized staff MAY correct or deny eligibility and MAY correct member profile information without changing the stable internal member identifier. V1 SHALL NOT collect identity documents for age verification.
+- The system SHALL create a gym-owned member record only after the invitee accepts the invitation. The record SHALL have a stable internal identifier and SHALL be extensible for future profile fields or metric associations without requiring a separate gym identity. At most one pending or active member record SHALL exist per verified email address.
+- A member SHALL become active only after invitation verification, external authentication association, required acceptance information, and current waiver signing are complete and the active-member cap permits activation. If the cap is reached, the system SHALL retain the accepted member as pending and inactive for staff resolution; pending members SHALL NOT be allowed to book or check in and SHALL NOT count toward the active-member cap. Authorized staff SHALL be able to resolve pending membership after capacity and current-waiver requirements are satisfied.
+- Gym booking access SHALL require an accepted invitation, an active member status, an authenticated member subject associated with that member record, and a signature for the current waiver version.
 - Admins and Front Desk staff SHALL be able to revoke and resend outstanding invitations.
 - Invitations SHALL expire after a period configured by an Admin. The launch value SHALL be set before the trial opens.
-- The system SHALL permit at most one active invitation per email address. Resending SHALL replace the outstanding invitation and restart its expiration period; revocation SHALL invalidate outstanding invitations.
-- Outstanding invitations and active members SHALL be visible to staff.
+- The system SHALL permit at most one active invitation per email address and at most one pending or active member record per verified email address. Resending SHALL replace the outstanding invitation and restart its expiration period; revocation SHALL invalidate outstanding invitations.
+- Outstanding invitations and pending, active, and inactive members SHALL be visible to authorized staff.
 
 #### FR-3.2.2 Member cap and member status
 - The system SHALL provide an Admin-configurable member cap as a guardrail on trial growth. Only active members SHALL count toward this cap; outstanding invitations SHALL NOT reserve capacity.
 - The member cap's launch value SHALL be set before invitations are issued; invitation-only access remains the primary access control.
-- The system SHALL block invitation redemption when the active-member cap has been reached.
+- When the active-member cap has been reached, the system SHALL retain a verified and accepted invitee who has completed the required acceptance information and signed the current waiver as pending and inactive for staff resolution rather than granting booking access. Pending records SHALL NOT reserve capacity or count toward the cap.
 - Admins and Front Desk staff SHALL be able to deactivate or reactivate a member. Reactivation SHALL respect the active-member cap.
 - Deactivating a member SHALL immediately block member-facing gym actions and flag that member's existing bookings and waitlist entries for staff review; the system SHALL NOT silently cancel or reassign them. Authorized staff SHALL be able to resolve the flagged records and record attendance if the member attends.
 
-#### FR-3.2.3 Member profiles and shared account
-- The system SHALL maintain a rudimentary member profile associated with one shared member account, including at minimum a display name and email address needed to administer invitations, membership status, bookings, and attendance.
-- The shared member account SHALL be the source of truth for member identity, display name, and email; these fields SHALL be available to the gym operations system and authorized connected clients after an update is saved. The gym operations system SHALL be the source of truth for gym membership status and make it available to connected clients.
-- The profile data model SHALL allow member metrics to be associated with the same member account in a future release without creating a separate gym identity. The metrics and storage format SHALL be specified separately; V1 SHALL NOT collect, calculate, import, display, or attribute workout metrics.
-- The gym operations system SHALL NOT define the mobile app's profile screens, account sign-up/sign-in screens, or account-deletion user experience; those belong to the separate mobile-app requirements.
+#### FR-3.2.3 Gym-owned member profiles and identity integration
+- Gym Operations SHALL maintain a member profile with a stable internal member identifier, display name, verified email address, member status, and adult-attestation evidence including timestamp.
+- Gym Operations SHALL be the source of truth for these gym-member profile fields and gym membership status. Authorized staff SHALL be able to correct profile details; changing an email SHALL NOT change the member identifier or detach the member's booking, waiver, or attendance history.
+- An external identity provider SHALL authenticate members for live member-facing operations. Gym Operations SHALL associate an authenticated provider subject with the gym-owned member record and SHALL NOT store member passwords. The identity provider, protocol, account linking, and synchronization with any mobile or metrics app remain undecided.
+- The stable internal member identifier SHALL allow future profile extensions and metric associations. Metric fields, storage format, ownership, and synchronization SHALL be specified separately; V1 SHALL NOT collect, calculate, import, display, or attribute workout metrics.
+- The gym operations system SHALL NOT define the mobile app's profile screens, sign-up/sign-in user experience, or account-deletion interaction; those belong to separate mobile-app requirements. This boundary SHALL NOT imply a shared account service or synchronized profile in V1.
 
 ### 3.3 Waivers
 
@@ -219,9 +224,10 @@ stateDiagram-v2
 ### 3.8 Notifications
 
 #### FR-3.8.1 Member notifications
-- The system SHALL send email for invitations, confirmed bookings and waitlist promotions, class cancellations, and class start-time or coach changes.
-- The system SHALL send booking-confirmation email only after the booking is confirmed.
-- A notification-delivery failure SHALL NOT reverse a confirmed booking, cancellation, or promotion. The system SHALL surface the failure to staff and allow staff to resend the email.
+- After the related operation is committed, the system SHALL attempt email for invitations, confirmed bookings and waitlist promotions, class cancellations, and class start-time or coach changes.
+- The system SHALL attempt booking-confirmation email only after the booking is confirmed.
+- Email delivery SHALL be best-effort and SHALL NOT reverse a confirmed booking, cancellation, or promotion. The system SHALL record provider-reported delivery outcomes, surface reported failures to staff, and allow staff to resend the email.
+- V1 SHALL NOT require a durable notification queue, automatic retry, or guaranteed delivery if a service process fails after the operation commits but before the email attempt. A later deployment design MAY specify stronger guarantees.
 - The system SHALL NOT send SMS or push notifications as part of this release.
 
 ### 3.9 Availability and Outage Handling
@@ -245,14 +251,14 @@ stateDiagram-v2
 
 ## 4. User-Facing Interface Requirements
 
-The gym operations application provides a staff-facing browser interface on desktop or tablet. Member-facing applications are separate clients and are specified in separate release requirements. This system exposes the authorized gym operations needed by those clients while enforcing the same eligibility, booking, waiver, and attendance rules.
+The gym operations application provides a staff-facing browser interface on desktop or tablet. Member-facing applications are separate clients and are specified in separate release requirements. This system exposes the authorized gym operations needed by those clients while enforcing the same eligibility, booking, waiver, and attendance rules. Live member and staff access requires an external identity provider; Gym Operations owns member/staff records and authorization roles and does not store passwords. Provider choice and integration details are not specified here.
 
 | User | Interface | Required capabilities |
 |------|-----------|-----------------------|
 | Admin | Staff web app | Manage staff, members, invitations, settings, waiver versions, stations, class types, templates, schedule, bookings, waitlists, and attendance. |
 | Front Desk | Staff web app | Manage members and invitations; view schedule; manage any class's bookings, waitlists, member station assignments, and attendance. |
 | Coach | Staff web app | View schedule; manage own-class roster, member station assignments, and attendance; edit own photo and biography. |
-| Member | Connected member-facing client (separate release) | Use authorized gym operations capabilities for invitation acceptance, waiver signing, class discovery, booking, waitlists, and check-in. Client screens and personal rowing-log capabilities are out of scope here. |
+| Member | Connected member-facing client (separate release) | Use an externally authenticated identity associated with a gym-owned member record for invitation acceptance, waiver signing, class discovery, booking, waitlists, and check-in. Client screens and personal rowing-log capabilities are out of scope here. |
 
 ## 5. Configuration Parameters
 
@@ -286,7 +292,8 @@ The gym operations application provides a staff-facing browser interface on desk
 
 ### 6.1 Access Control
 - The system SHALL enforce role permissions consistently across staff capabilities.
-- Member gym actions SHALL be available only to active, invited members who satisfy the current waiver requirement.
+- Member gym actions SHALL be available only to authenticated members whose gym-owned records are active, invited, and compliant with the current waiver requirement.
+- The system SHALL associate authenticated external identity subjects with the correct gym-owned member or staff record. It SHALL NOT store member or staff passwords.
 - Coach contact details SHALL NOT be exposed to members.
 
 ### 6.2 Usability
@@ -304,8 +311,12 @@ The gym operations application provides a staff-facing browser interface on desk
 
 ### 6.4 Privacy and Eligibility
 - The v1 trial SHALL be limited to adults.
-- Members SHALL attest to being at least 18 years old during invitation acceptance; staff MAY correct or deny eligibility.
+- Members SHALL explicitly attest to being at least 18 years old during invitation acceptance, and the system SHALL record the attestation timestamp; staff MAY correct or deny eligibility.
 - Account-deletion retention and anonymization rules for gym records remain an owner/legal decision; this document does not prescribe a retention period.
+
+### 6.5 Deployment and Prototype Boundaries
+- The GitHub Pages proof of concept, if used, SHALL be a static, simulated, non-authoritative interface demonstration. It SHALL NOT authenticate live users, persist authoritative booking data, send operational email, or enforce production gym rules, and SHALL NOT be used to operate classes.
+- A live deployment SHALL provide an authenticated service and durable operational data store. Concrete hosting, language, database product, availability targets, and recovery targets are not selected by this requirements document and SHALL be specified by the applicable deployment design.
 
 ## 7. Out of Scope (v1)
 
@@ -321,6 +332,9 @@ The gym operations application provides a staff-facing browser interface on desk
 - Tracking dumbbells, floor spots, or other equipment.
 - Bulk booking or booking on behalf of another member.
 - Custom staff permission profiles.
+- A particular external authentication provider, provider protocol, cross-application account-linking flow, or synchronized member profile. Gym Operations SHALL own the gym-member record and stable identifier; integration with the mobile or metrics application is undecided.
+- Workout metrics, metric storage schemas, or placeholder metric values. The stable member identifier MAY support separately specified future profile or metrics records.
+- Strong email-delivery guarantees beyond recording provider-reported outcomes and allowing staff resend, including durable queues, automatic retry, and delivery guarantees across process failure.
 - Minor participation and guardian waiver flows.
 - Account-deletion retention and anonymization policy definition, which remains an owner/legal decision.
 
@@ -333,13 +347,15 @@ flowchart TB
         Desk["Front Desk"]
         Coach["Coach"]
     end
-    Member["Invited member using connected client<br/>(separate release)"]
+    Member["Invited member using connected client"]
     Gym["Gym operations"]
+    Identity["External identity provider"]
     Email["Email notifications"]
     Admin --> Gym
     Desk --> Gym
     Coach --> Gym
     Member --> Gym
+    Gym --> Identity
     Gym --> Email
 ```
 
@@ -353,6 +369,9 @@ The gym operations system does not connect to PM5s or capture, store, or attribu
 | **PM5 association** | The current association between a PM5 monitor and a friendly-labeled station; historical mapping is not retained. It does not imply PM5 connectivity or workout-metric capture in this release. |
 | **In-service station** | A station currently available to contribute to class capacity. |
 | **Waitlist promotion** | Automatic booking of the first waitlisted member into a station freed before the waitlist cutoff. |
+| **Gym member record** | A gym-owned profile with a stable internal identifier, distinct from the external identity-provider account used to authenticate a person. |
+| **Pending member** | An accepted invitee who has completed the required acceptance information and current waiver signing but cannot be activated because the member cap is full; pending members cannot book or check in. |
+| **External identity provider** | The separate service used to authenticate members and staff for live access; its selection and integration are not specified here. |
 | **Late-cancel cutoff** | Admin-configured threshold determining whether a cancellation is late. |
 | **Un-check-in** | Staff action reversing a member's check-in when the member did not attend. |
 | **Target inter-class gap** | Warning-only preferred time between classes; actual class-time overlap is prohibited. A gap shorter than the target, including zero without overlap, is allowed with a warning. |
@@ -363,12 +382,17 @@ The gym operations system does not connect to PM5s or capture, store, or attribu
 
 - The gym operates from one room with a fixed layout of numbered RowErg stations.
 - Each physical RowErg has a friendly station label. Staff are responsible for keeping machines in their designated positions and maintaining the current PM5 association; historical equipment mapping is not required.
-- Each person uses one shared member account for gym membership and connected member-facing clients; the gym operations system does not create a separate gym identity.
-- Members may be invited whether or not they already have a shared member account.
+- Gym Operations owns a stable member record for each accepted invitee; it does not assume a shared account service or synchronization with the mobile or metrics application.
+- Live member and staff authentication is provided by an external identity provider; Gym Operations owns profile/status and staff-role records but does not store passwords.
+- A one-time expiring invitation email link verifies control of the invited address but does not provide ongoing authentication. Provider selection, subject mapping, and safeguards for forwarded links remain deployment-design decisions.
+- Member records are created after acceptance and use a stable internal identifier. There is at most one pending or active member per verified email; authorized email corrections do not change the internal identifier or history.
+- If the active-member cap is full, a verified and accepted invitee remains pending and inactive for staff resolution, with no booking/check-in access and no active-cap reservation.
+- Member profiles collect only fields required for V1 operations, including display name, verified email, gym status, and adult-attestation evidence. The profile is extensible by stable identifier, but V1 does not store workout metrics or placeholder metric data.
 - The launch values for member cap, waitlist cutoff, late-cancel cutoff, and invitation expiration are not specified; an Admin must set them before the relevant trial activity begins.
 - A promoted waitlisted member is booked automatically and is subject to ordinary no-show tracking without a separate acceptance.
 - Existing bookings are preserved after a new waiver version is published, but the member must sign the current version before checking in or making another booking.
 - When member deactivation or station downtime affects existing bookings, staff resolve the flagged cases rather than the system silently cancelling or reassigning them.
-- The trial admits adults only, using member self-attestation with staff correction/denial as needed. Retention and anonymization requirements after account deletion remain subject to owner and legal decisions.
+- The trial admits adults only, using recorded member self-attestation with staff correction/denial as needed. Retention and anonymization requirements after account deletion remain subject to owner and legal decisions.
 - V1 does not collect, process, display, or attribute workout metrics. Future personal-metrics and room-hub requirements are tracked separately.
-- The system does not define mobile account sign-up, sign-in, profile screens, or account-deletion interaction; those belong to the separate mobile-app requirements. Account-deletion retention and anonymization rules for gym records remain an owner/legal decision.
+- The system does not define mobile account sign-up, sign-in, profile screens, cross-app account linking, or account-deletion interaction; those belong to separate mobile-app requirements. Account-deletion retention and anonymization rules for gym records remain an owner/legal decision.
+- The GitHub Pages proof of concept is static and simulated, and is not an operational deployment. Production availability and recovery targets are deferred to the hosted deployment design.
