@@ -1,0 +1,62 @@
+.screen {
+  display: grid;
+  gap: 1rem;
+}
+
+.notice,
+.panel {
+  padding: 1rem;
+  border: 1px solid #53657a;
+  border-radius: 0.5rem;
+}
+
+.notice {
+  background: #f1f5fa;
+  color: #182737;
+}
+
+.panel form {
+  display: grid;
+  gap: 1rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+@media print {
+  :global(body):has(.screen) * {
+    visibility: hidden !important;
+  }
+
+  :global(body):has(.screen)
+    *:not(:has(.printRoster)):not(.printRoster):not(.printRoster *) {
+    display: none !important;
+  }
+
+  :global(body) .printRoster,
+  :global(body) .printRoster * {
+    visibility: visible !important;
+  }
+
+  .printRoster {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    color: #000;
+    background: #fff;
+  }
+
+  .printRoster table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .printRoster th,
+  .printRoster td {
+    border: 1px solid #000;
+    padding: 0.5rem;
+  }
+}

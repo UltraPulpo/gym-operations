@@ -1,0 +1,35 @@
+.screen {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.workspace {
+  display: grid;
+  gap: 1rem;
+}
+
+.controls {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid #64748b;
+  border-radius: 0.5rem;
+}
+
+.error,
+.success {
+  padding: 1rem;
+  border: 2px solid;
+  border-radius: 0.5rem;
+}
+
+.error {
+  color: #7f1d1d;
+  background: #fff1f2;
+}
+
+.success {
+  color: #14532d;
+  background: #f0fdf4;
+}

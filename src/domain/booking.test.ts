@@ -1401,7 +1401,7 @@ describe('staff removal and reseating rules', () => {
     expect(JSON.stringify(input)).toBe(snapshot);
   });
 
-  it('rejects map reseating when the layout is stale and permits staff reseating through exact class end only', () => {
+  it('rejects stale layout changes and labels direct exact-end published reseating as a defensive snapshot', () => {
     const input = booked(makeState({ layout: { availability: 'stale' } }));
     expect(
       moveBooking(input, admin, 'booking:existing', 'station:two', now),
@@ -1425,6 +1425,62 @@ describe('staff removal and reseating rules', () => {
         'booking:existing',
         'station:two',
         '2026-10-02T18:00:01Z',
+      ).success,
+    ).toBe(false);
+  });
+
+  it('permits only staff reseating at exact end after clock-driven class completion', () => {
+    const completed = makeClass({
+      status: 'completed',
+      completedAt: classEnd,
+    });
+    const first = makeBooking('booking:first', memberOne, 'station:one');
+    const second = makeBooking('booking:second', memberTwo, 'station:two');
+    const input = makeState({
+      classes: [completed],
+      bookings: [first, second],
+    });
+
+    expect(
+      moveBooking(input, admin, first.bookingId, 'station:three', classEnd)
+        .success,
+    ).toBe(true);
+    expect(
+      swapBookings(
+        input,
+        admin,
+        first.bookingId,
+        second.bookingId,
+        classEnd,
+        true,
+      ).success,
+    ).toBe(true);
+    expect(
+      moveBooking(
+        input,
+        admin,
+        first.bookingId,
+        'station:three',
+        '2026-10-02T18:00:01Z',
+      ),
+    ).toMatchObject({
+      success: false,
+      error: { category: 'IneligibleDemoAction', reason: 'classCompleted' },
+    });
+    expect(
+      removeBooking(input, admin, first.bookingId, 'Too late', classEnd)
+        .success,
+    ).toBe(false);
+    const unprocessedCompletion = booked(
+      makeState({ classes: [makeClass({ status: 'completed' })] }),
+    );
+    expect(
+      moveBooking(
+        unprocessedCompletion,
+        admin,
+        'booking:existing',
+        'station:two',
+        classEnd,
       ).success,
     ).toBe(false);
   });

@@ -1,0 +1,40 @@
+.screen {
+  max-width: 75rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.notice {
+  padding: 1rem;
+  border: 2px solid #735110;
+  background: #fff7dc;
+  color: #392600;
+}
+
+.section {
+  margin-block: 1.5rem;
+}
+
+.form {
+  display: grid;
+  gap: 1rem;
+  max-width: 42rem;
+  margin-block: 1rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.evidence {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.waiver {
+  white-space: pre-wrap;
+  padding: 1rem;
+  border: 1px solid #68778a;
+}

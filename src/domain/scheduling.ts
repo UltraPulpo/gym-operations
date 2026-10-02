@@ -346,6 +346,7 @@ export function applyWeeklyTemplate(
 
   const proposed: ScheduledClass[] = [];
   const skippedDuplicates: ClassId[] = [];
+  const reservedIds = new Set(input.classes.map(({ classId }) => classId));
   for (const entry of weeklyTemplate.entries) {
     const classType = input.classTypes.find(
       ({ classTypeId }) => classTypeId === entry.classTypeId,
@@ -375,10 +376,10 @@ export function applyWeeklyTemplate(
         },
       ]);
     }
-    const classId =
+    const baseClassId =
       `class:${weeklyTemplate.templateId}:${entry.entryId}:${date}` as ClassId;
     const candidate = toClass(
-      classId,
+      baseClassId,
       schedule,
       starts,
       classType,
@@ -391,17 +392,14 @@ export function applyWeeklyTemplate(
       skippedDuplicates.push(duplicate.classId);
       continue;
     }
-    if (
-      input.classes.some(({ classId: existingId }) => existingId === classId)
-    ) {
-      return invalid('A generated class ID is already in use.', [
-        {
-          field: 'classId',
-          message: `Generated class ID ${classId} is not unique.`,
-        },
-      ]);
+    let classId = baseClassId;
+    let occurrence = 2;
+    while (reservedIds.has(classId)) {
+      classId = `${baseClassId}:occurrence:${occurrence}` as ClassId;
+      occurrence += 1;
     }
-    proposed.push(candidate);
+    reservedIds.add(classId);
+    proposed.push({ ...candidate, classId });
   }
 
   const activeExisting = input.classes.filter(

@@ -327,6 +327,105 @@ describe('coach profile visibility', () => {
 });
 
 describe('coach profile updates', () => {
+  function profileless(active = true): DemoState {
+    const base = state();
+    return freeze({
+      ...base,
+      staffAccounts: base.staffAccounts.map((account) => {
+        if (account.staffId !== coachId) return account;
+        return { ...account, coachProfile: undefined, active };
+      }),
+    });
+  }
+
+  it.each([true, false])(
+    'allows Admin to initialize a complete profile without changing access or activity: %s',
+    (active) => {
+      const input = profileless(active);
+      const before = structuredClone(input);
+      const updates = profile();
+      const changes = value(
+        updateCoachProfile(input, adminActor, coachId, updates),
+      );
+      expect(changes.staffAccounts?.[2]).toEqual({
+        ...input.staffAccounts[2],
+        coachProfile: updates,
+      });
+      expect(changes.staffAccounts?.[0]).toBe(input.staffAccounts[0]);
+      expect(
+        changedProfile({ success: true, value: changes }).contact,
+      ).not.toBe(updates.contact);
+      expect(
+        changedProfile({ success: true, value: changes }).certifications,
+      ).not.toBe(updates.certifications);
+      expect(input).toEqual(before);
+    },
+  );
+
+  it.each([
+    'displayName',
+    'biography',
+    'avatarId',
+    'certifications',
+    'contact',
+  ] as const)(
+    'requires an explicit %s when Admin initializes a profile',
+    (field) => {
+      const updates: AdminCoachProfileUpdate = {
+        ...profile(),
+        [field]: undefined,
+      };
+      failure(
+        updateCoachProfile(profileless(), adminActor, coachId, updates),
+        'ValidationError',
+        { fields: [{ field }] },
+      );
+    },
+  );
+
+  it('does not let a coach initialize their own profile even with a complete runtime payload', () => {
+    failure(
+      updateOwnCoachProfile(profileless(), coachActor, coachId, profile()),
+      'DemoUnavailableState',
+    );
+  });
+
+  it.each([coachActor, deskActor, memberActor, invitationActor])(
+    'denies complete initialization to a non-admin $kind',
+    (actor) => {
+      failure(
+        updateCoachProfile(profileless(), actor, coachId, profile()),
+        'IneligibleDemoAction',
+        { reason: 'roleDenied' },
+      );
+    },
+  );
+
+  it('denies initialization by inactive Admin and rejects non-coach targets', () => {
+    const base = profileless();
+    const input = freeze({
+      ...base,
+      staffAccounts: base.staffAccounts.map((account) =>
+        account.staffId === adminActor.staffId
+          ? { ...account, active: false }
+          : account,
+      ),
+    });
+    failure(
+      updateCoachProfile(input, adminActor, coachId, profile()),
+      'IneligibleDemoAction',
+      { reason: 'inactiveStaff' },
+    );
+    failure(
+      updateCoachProfile(base, adminActor, deskActor.staffId, profile()),
+      'DemoUnavailableState',
+    );
+    failure(
+      updateCoachProfile(base, adminActor, 'staff:missing', profile()),
+      'DemoUnavailableState',
+    );
+  });
+
   it('reports malformed update payloads explicitly instead of throwing', () => {
     const input = freeze(state());
     failure(

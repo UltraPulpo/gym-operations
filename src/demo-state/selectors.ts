@@ -286,6 +286,34 @@ export function selectMembers(
     );
 }
 
+export function selectClassRosterMembers(
+  state: DemoState,
+  classId: ClassId,
+  actor: DemoActor = state.activeActor,
+): readonly Pick<Member, 'memberId' | 'displayName'>[] {
+  if (!requireCapability(state, actor, 'viewRoster', { classId }).success) {
+    return [];
+  }
+  const rosterIds = new Set([
+    ...state.bookings
+      .filter((booking) => booking.classId === classId)
+      .map((booking) => booking.memberId),
+    ...state.waitlistEntries
+      .filter(
+        (entry) => entry.classId === classId && entry.status === 'waiting',
+      )
+      .map((entry) => entry.memberId),
+  ]);
+  return state.members
+    .filter((member) => rosterIds.has(member.memberId))
+    .map(({ memberId, displayName }) => ({ memberId, displayName }))
+    .sort(
+      (left, right) =>
+        left.displayName.localeCompare(right.displayName) ||
+        left.memberId.localeCompare(right.memberId),
+    );
+}
+
 export function selectStaffAccounts(
   state: DemoState,
   actor: DemoActor = state.activeActor,

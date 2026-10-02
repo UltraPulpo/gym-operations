@@ -37,7 +37,9 @@ function unavailable(staffId: StaffId): DomainResult<never> {
   };
 }
 
-function validateProfile(profile: CoachProfile): DomainResult<void> {
+function validateProfile(
+  profile: Partial<CoachProfile>,
+): DomainResult<CoachProfile> {
   if (typeof profile.displayName !== 'string' || !profile.displayName.trim()) {
     return invalid('displayName', 'A coach display name is required.');
   }
@@ -63,6 +65,7 @@ function validateProfile(profile: CoachProfile): DomainResult<void> {
     );
   }
   if (
+    profile.contact === undefined ||
     profile.contact === null ||
     typeof profile.contact !== 'object' ||
     Array.isArray(profile.contact)
@@ -87,7 +90,16 @@ function validateProfile(profile: CoachProfile): DomainResult<void> {
       );
     }
   }
-  return { success: true, value: undefined };
+  return {
+    success: true,
+    value: {
+      displayName: profile.displayName,
+      avatarId: profile.avatarId,
+      biography: profile.biography,
+      certifications: [...profile.certifications],
+      contact: { ...profile.contact },
+    },
+  };
 }
 
 function copyProfile(profile: CoachProfile): CoachProfile {
@@ -111,11 +123,18 @@ function updateProfile(
   staffId: StaffId,
   updates: AdminCoachProfileUpdate,
   allowedFields: readonly string[],
+  allowInitialization = false,
 ): DomainResult<DemoStateChanges> {
   const staff = state.staffAccounts.find(
     (account) => account.staffId === staffId,
   );
-  if (!staff?.coachProfile) return unavailable(staffId);
+  if (
+    !staff ||
+    (!staff.coachProfile &&
+      (!allowInitialization || !staff.assignedRoles.includes('coach')))
+  ) {
+    return unavailable(staffId);
+  }
   if (
     updates === null ||
     typeof updates !== 'object' ||
@@ -140,7 +159,7 @@ function updateProfile(
     value: {
       staffAccounts: state.staffAccounts.map((account) =>
         account.staffId === staffId
-          ? { ...account, coachProfile: copyProfile(updated) }
+          ? { ...account, coachProfile: validation.value }
           : account,
       ),
     },
@@ -161,6 +180,7 @@ export function updateOwnCoachProfile(
   return updateProfile(state, staffId, updates, ['avatarId', 'biography']);
 }
 
+/** Admin may initialize a Coach account only with a complete, valid profile. */
 export function updateCoachProfile(
   state: DemoState,
   actor: DemoActor,
@@ -171,13 +191,13 @@ export function updateCoachProfile(
     staffId,
   });
   if (!permission.success) return permission;
-  return updateProfile(state, staffId, updates, [
-    'displayName',
-    'avatarId',
-    'biography',
-    'certifications',
-    'contact',
-  ]);
+  return updateProfile(
+    state,
+    staffId,
+    updates,
+    ['displayName', 'avatarId', 'biography', 'certifications', 'contact'],
+    true,
+  );
 }
 
 export type CoachProfileView =

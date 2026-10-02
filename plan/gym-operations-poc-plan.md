@@ -1081,16 +1081,16 @@ This table is the single source of truth for task progress. Update the status he
 | 5.1 | Implement typed reducer actions and deterministic transitions | 3.1–3.10, 4.1–4.2 | — | [x] |
 | 5.2 | Wire state context, selectors, validation, clock, reset, and scenario load | 5.1 | — | [x] |
 | 5.3 | Add React test render helpers | 4.1–4.2, 5.2 | — | [x] |
-| 6.1 | Build staff access management demonstration | 2.2, 3.6, 5.3 | — | [ ] |
-| 6.2 | Build member and invitation workflows | 2.2, 3.1, 3.6–3.7, 5.3 | — | [ ] |
-| 6.3 | Build waiver version and signature screens | 2.2, 3.7, 5.3 | — | [ ] |
-| 6.4 | Build station management and layout demonstration | 2.2, 3.2, 5.3 | — | [ ] |
-| 6.5 | Build class-type and schedule-management workflows | 2.2, 3.3, 3.8–3.9, 5.3 | — | [ ] |
-| 6.6 | Build class booking, queue, and staff reseating screens | 2.2, 3.1–3.4, 3.6–3.9, 5.3 | — | [ ] |
-| 6.7 | Build check-in, attendance correction, and printable roster screens | 2.2, 3.5, 5.3 | — | [ ] |
-| 6.8 | Build simulated notification outcomes and resend screen | 2.2, 3.9, 5.3 | — | [ ] |
-| 6.9 | Build coach profile views and edit controls | 2.2, 3.6, 3.10, 5.3 | — | [ ] |
-| 6.10 | Build illustrative Admin settings screen | 2.2, 5.3 | — | [ ] |
+| 6.1 | Build staff access management demonstration | 2.2, 3.6, 5.3 | — | [x] |
+| 6.2 | Build member and invitation workflows | 2.2, 3.1, 3.6–3.7, 5.3 | — | [x] |
+| 6.3 | Build waiver version and signature screens | 2.2, 3.7, 5.3 | — | [x] |
+| 6.4 | Build station management and layout demonstration | 2.2, 3.2, 5.3 | — | [x] |
+| 6.5 | Build class-type and schedule-management workflows | 2.2, 3.3, 3.8–3.9, 5.3 | — | [x] |
+| 6.6 | Build class booking, queue, and staff reseating screens | 2.2, 3.1–3.4, 3.6–3.9, 5.3 | — | [x] |
+| 6.7 | Build check-in, attendance correction, and printable roster screens | 2.2, 3.5, 5.3 | — | [x] |
+| 6.8 | Build simulated notification outcomes and resend screen | 2.2, 3.9, 5.3 | — | [x] |
+| 6.9 | Build coach profile views and edit controls | 2.2, 3.6, 3.10, 5.3 | — | [x] |
+| 6.10 | Build illustrative Admin settings screen | 2.2, 5.3 | — | [x] |
 | 7.1 | Wire overview, shell, navigation, routes, scenarios, and error boundary | 6.1–6.10, 5.3 | — | [ ] |
 | 8.1 | Cover staff roles, invitation acceptance, and waiver workflows | 7.1 | — | [ ] |
 | 8.2 | Cover station layout, class type, and weekly schedule workflows | 7.1 | — | [ ] |
@@ -1099,9 +1099,9 @@ This table is the single source of truth for task progress. Update the status he
 | 9.1 | Enforce PR checks and safe GitHub Pages publication | 1.1, 8.1–8.4 | — | [ ] |
 
 **Eligible tasks** (status `[ ]`, prerequisites complete, no conflicting task `[~]`):
-- Tasks 6.1-6.10: Independent feature workflows
+- Task 7.1: Wire overview, shell, navigation, routes, scenarios, and error boundary
 
-**Progress:** 18 / 34 tasks complete
+**Progress:** 28 / 34 tasks complete
 
 ---
 

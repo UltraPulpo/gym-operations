@@ -1,0 +1,19 @@
+.screen {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.screen form,
+.screen article {
+  border: 1px solid #64748b;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-block: 1rem;
+}
+
+.screen form {
+  display: grid;
+  gap: 1rem;
+  max-width: 40rem;
+}

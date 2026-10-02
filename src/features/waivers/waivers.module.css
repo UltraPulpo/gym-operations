@@ -1,0 +1,34 @@
+.screen {
+  display: grid;
+  gap: 1rem;
+  max-width: 75rem;
+  margin-inline: auto;
+  padding: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.notice {
+  border: 2px solid #735c0f;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  background: #fff9dc;
+  color: #342800;
+}
+
+.panel {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid #b6c0cc;
+  border-radius: 0.5rem;
+}
+
+.panel form {
+  display: grid;
+  gap: 1rem;
+}
+
+.waiverText {
+  white-space: pre-wrap;
+}

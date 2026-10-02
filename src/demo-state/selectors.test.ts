@@ -7,6 +7,7 @@ import {
   selectClassAttendance,
   selectClassBookings,
   selectClassLayout,
+  selectClassRosterMembers,
   selectClasses,
   selectClassSeatSummary,
   selectClassWaitlist,
@@ -100,6 +101,54 @@ describe('demo-state selectors', () => {
     expect(JSON.stringify(selectStaffAccounts(state))).not.toMatch(
       /identitySubject|coachProfile/,
     );
+  });
+
+  it('projects names only for an authorized class roster, including retained history and queue-only members', () => {
+    const seed = createInitialDemoState();
+    const state = {
+      ...seed,
+      members: seed.members.map((member) => ({
+        ...member,
+        contactEmail: 'private.contact@example.invalid',
+      })),
+      waitlistEntries: [
+        ...seed.waitlistEntries,
+        {
+          ...seed.waitlistEntries[0]!,
+          entryId: 'waitlist:history-only-aspen' as const,
+          memberId: ids.members.aspen,
+          classId: ids.classes.history,
+          joinOrder: 1,
+          status: 'waiting' as const,
+          reviewFlags: [],
+        },
+      ],
+    };
+    const coach: DemoActor = { kind: 'staff', staffId: ids.staff.coach };
+    const roster = selectClassRosterMembers(state, ids.classes.history, coach);
+
+    expect(roster).toEqual(
+      expect.arrayContaining([
+        { memberId: ids.members.willow, displayName: 'Fictional Willow' },
+        { memberId: ids.members.juniper, displayName: 'Fictional Juniper' },
+        { memberId: ids.members.aspen, displayName: 'Fictional Aspen' },
+      ]),
+    );
+    expect(JSON.stringify(roster)).not.toMatch(
+      /contactEmail|verifiedEmail|identitySubject|invitationId/,
+    );
+    expect(selectMembers(state, coach)).not.toContainEqual(
+      expect.objectContaining({ memberId: ids.members.aspen }),
+    );
+    expect(selectClassRosterMembers(state, ids.classes.full, coach)).toEqual(
+      [],
+    );
+    expect(
+      selectClassRosterMembers(state, ids.classes.history, {
+        kind: 'member',
+        memberId: ids.members.maple,
+      }),
+    ).toEqual([]);
   });
 
   it.each([

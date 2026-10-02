@@ -28,7 +28,7 @@ import {
   updateWeeklyTemplate,
 } from './scheduling';
 
-const timezone = 'America/Los_Angeles';
+const timezone: IanaTimeZone = 'America/Los_Angeles';
 const classType: ClassType = {
   classTypeId: 'classType:rowing',
   name: 'Illustrative Rowing',
@@ -286,6 +286,158 @@ describe('weekly template expansion', () => {
     expect(result.classes).toEqual([]);
     expect(result.skippedDuplicates).toEqual(['class:existing']);
     expect(duplicate.status).toBe('draft');
+  });
+
+  it('allocates deterministic distinct occurrences after editing an applied entry and skips unchanged reapplications', () => {
+    const weekly = template([entry('tuesday', 2, '10:00')]);
+    const input = {
+      template: weekly,
+      weekStartsOn: '2026-11-16' as const,
+      timezone,
+      classTypes,
+      classes: [],
+      targetGapMinutes: 30,
+    };
+    const original = valueOf(applyWeeklyTemplate(input)).classes;
+    const before = structuredClone(original);
+    const edited = first(
+      valueOf(
+        updateWeeklyTemplate([weekly], weekly.templateId, {
+          entries: [entry('tuesday', 2, '10:30')],
+        }),
+      ),
+    );
+    const reapplication = { ...input, template: edited, classes: original };
+    const result = valueOf(applyWeeklyTemplate(reapplication));
+    const occurrence = first(result.classes);
+
+    expect(occurrence.classId).toBe(`${first(original).classId}:occurrence:2`);
+    expect(occurrence.schedule).toEqual(localSchedule('2026-11-17', '10:30'));
+    expect(occurrence.status).toBe('draft');
+    expect(result.skippedDuplicates).toEqual([]);
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        earlierClassId: first(original).classId,
+        laterClassId: occurrence.classId,
+        actualGapMinutes: 0,
+      }),
+    ]);
+    expect(applyWeeklyTemplate(reapplication)).toEqual({
+      success: true,
+      value: result,
+    });
+    expect(original).toEqual(before);
+
+    const retained = [...original, occurrence];
+    const duplicate = valueOf(
+      applyWeeklyTemplate({ ...reapplication, classes: retained }),
+    );
+    expect(duplicate).toEqual({
+      classes: [],
+      skippedDuplicates: [occurrence.classId],
+      warnings: [],
+    });
+    expect(
+      valueOf(applyWeeklyTemplate({ ...input, classes: retained })),
+    ).toEqual({
+      classes: [],
+      skippedDuplicates: [first(original).classId],
+      warnings: [],
+    });
+    expect(retained[0]).toBe(original[0]);
+    expect(original).toEqual(before);
+  });
+
+  it('rejects all edited occurrences on a real overlap rather than an ID collision', () => {
+    const weekly = template([
+      entry('tuesday', 2, '10:00'),
+      entry('thursday', 4, '10:00'),
+    ]);
+    const input = {
+      template: weekly,
+      weekStartsOn: '2026-11-16' as const,
+      timezone,
+      classTypes,
+      classes: [],
+      targetGapMinutes: 30,
+    };
+    const original = valueOf(applyWeeklyTemplate(input)).classes;
+    const before = structuredClone(original);
+    const edited = first(
+      valueOf(
+        updateWeeklyTemplate([weekly], weekly.templateId, {
+          entries: [
+            entry('tuesday', 2, '10:30'),
+            entry('thursday', 4, '10:15'),
+          ],
+        }),
+      ),
+    );
+    const result = applyWeeklyTemplate({
+      ...input,
+      template: edited,
+      classes: original,
+    });
+    expect(result).toMatchObject({
+      success: false,
+      error: {
+        category: 'DemoConflict',
+        message: 'The proposed class overlaps another scheduled class.',
+        conflict: {
+          kind: 'schedule',
+          classIds: [original[1]?.classId, expect.any(String)],
+        },
+      },
+    });
+    if (!result.success && result.error.category === 'DemoConflict') {
+      if (result.error.conflict.kind === 'schedule') {
+        expect(result.error.conflict.classIds[1]).not.toBe(
+          original[1]?.classId,
+        );
+      }
+    }
+    expect(original).toEqual(before);
+  });
+
+  it('reserves generated IDs against retained cancelled occurrences and other proposals', () => {
+    const weekly = template([
+      entry('tuesday', 2, '10:00'),
+      entry('thursday', 4, '10:00'),
+    ]);
+    const input = {
+      template: weekly,
+      weekStartsOn: '2026-11-16' as const,
+      timezone,
+      classTypes,
+      classes: [],
+      targetGapMinutes: 30,
+    };
+    const original = valueOf(applyWeeklyTemplate(input)).classes;
+    const baseId = first(original).classId;
+    const retained: ScheduledClass[] = [
+      { ...first(original), status: 'cancelled' },
+      {
+        ...first(original),
+        classId: `${baseId}:occurrence:2`,
+        status: 'cancelled',
+      },
+      {
+        ...first(original),
+        classId: `${baseId}:occurrence:4`,
+        status: 'cancelled',
+      },
+    ];
+    const before = structuredClone(retained);
+    const result = valueOf(
+      applyWeeklyTemplate({ ...input, classes: retained }),
+    );
+    expect(first(result.classes).classId).toBe(`${baseId}:occurrence:3`);
+    expect(result.classes[1]?.classId).toBe(original[1]?.classId);
+    expect(
+      new Set([...retained, ...result.classes].map((item) => item.classId))
+        .size,
+    ).toBe(retained.length + result.classes.length);
+    expect(retained).toEqual(before);
   });
 
   it('rejects the complete proposal when any proposed class overlaps', () => {

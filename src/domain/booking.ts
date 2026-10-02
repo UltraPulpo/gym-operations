@@ -1070,6 +1070,7 @@ function actionableStaffClass(
   state: DemoState,
   booking: Booking,
   now: UtcInstant,
+  allowCompletedAtEnd = false,
 ): DomainResult<ScheduledClass> {
   if (!validInstant(now)) return invalid('now', 'Provide a valid UTC instant.');
   const scheduledClass = findClass(state, booking.classId);
@@ -1089,12 +1090,17 @@ function actionableStaffClass(
       classId: booking.classId,
     });
   }
-  if (scheduledClass.status === 'completed') {
+  const completedAtEnd =
+    allowCompletedAtEnd &&
+    scheduledClass.status === 'completed' &&
+    scheduledClass.completedAt === scheduledClass.endsAt &&
+    Date.parse(now) === Date.parse(scheduledClass.endsAt);
+  if (scheduledClass.status === 'completed' && !completedAtEnd) {
     return ineligible('classCompleted', 'The class is already complete.', {
       classId: booking.classId,
     });
   }
-  if (scheduledClass.status !== 'published') {
+  if (scheduledClass.status !== 'published' && !completedAtEnd) {
     return ineligible('classNotPublished', 'The class is not published.', {
       classId: booking.classId,
     });
@@ -1354,7 +1360,7 @@ function staffReseatContext(
     booking,
   );
   if (!permission.success) return permission;
-  const scheduledClass = actionableStaffClass(state, booking, now);
+  const scheduledClass = actionableStaffClass(state, booking, now, true);
   if (!scheduledClass.success) return scheduledClass;
   if (state.layout.availability !== 'current') {
     return unavailable(
