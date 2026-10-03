@@ -411,8 +411,8 @@ describe('notification role boundaries', () => {
       ids.notifications.classCancelled,
     ]);
     expect(view.container).not.toHaveTextContent('invitee@example.invalid');
-    expect(view.container).not.toHaveTextContent('birch@example.invalid');
-    expect(view.container).not.toHaveTextContent('aspen@example.invalid');
+    expect(view.container).not.toHaveTextContent('sam.patel@example.invalid');
+    expect(view.container).not.toHaveTextContent('casey.park@example.invalid');
     expect(
       view.queryByRole('button', { name: 'Resend simulated notification' }),
     ).not.toBeInTheDocument();

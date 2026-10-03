@@ -54,10 +54,6 @@ export function ClassesScreen() {
     <main className={styles.screen}>
       <h1>Class types</h1>
       <p>
-        Fictional, non-operational demo. Edits are in memory only; refresh
-        resets all data.
-      </p>
-      <p>
         Updated definitions apply to newly scheduled classes only. Existing
         scheduled snapshots remain unchanged.
       </p>

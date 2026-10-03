@@ -70,7 +70,7 @@ function Feedback({
 function BoundaryNotice() {
   return (
     <p className={styles.notice}>
-      SIMULATED DEMO - NOT FOR OPERATIONS. Fictional data resets on refresh.
+      Identity and email outcomes are simulated. No email is transmitted.
       Identity verification and email delivery are local simulations. No email
       is sent, no live authentication occurs, and no credentials are requested.
       Use fictional names and example.invalid addresses only.
@@ -83,7 +83,7 @@ function WaiverText() {
   const waiver = getCurrentWaiver(demo.state);
   if (!waiver.success) return <Alert>{waiver.error.message}</Alert>;
   return (
-    <section aria-label="Current fictional waiver">
+    <section aria-label="Current waiver">
       <h3>Current waiver version {waiver.value.version}</h3>
       <p>Fictional, non-legal waiver and signature evidence only.</p>
       <p className={styles.waiver}>{waiver.value.text}</p>
@@ -186,7 +186,7 @@ function InvitationManagement() {
         <Button type="submit">Create invitation</Button>
       </form>
       <DataTable
-        caption="Fictional invitations"
+        caption="Invitations"
         rows={invitations}
         getRowKey={(invitation) => invitation.invitationId}
         columns={[
@@ -416,9 +416,7 @@ function StaffMembers({ managesMembers }: { managesMembers: boolean }) {
       <Feedback {...feedback} />
       <DataTable
         caption={
-          managesMembers
-            ? 'Fictional gym members'
-            : 'Assigned-class members (redacted)'
+          managesMembers ? 'Gym members' : 'Assigned-class members (redacted)'
         }
         rows={members}
         getRowKey={(member) => member.memberId}
@@ -610,9 +608,9 @@ function InvitationJourney() {
   if (demo.capabilities.success && invitation && waiver.success) {
     return (
       <section className={styles.section}>
-        <h2>Invitation acceptance</h2>
+        <h2>Complete acceptance</h2>
         <p>
-          Selected fictional invitation: {invitation.email}; expires at{' '}
+          Selected invitation: {invitation.email}; expires at{' '}
           {invitation.expiresAt} (UTC).
         </p>
         <AcceptanceForm
@@ -684,7 +682,7 @@ function OwnMember() {
   const waiver = getCurrentWaiver(demo.state);
   return (
     <section className={styles.section}>
-      <h2>Your fictional membership</h2>
+      <h2>Your membership</h2>
       <p>
         {member.displayName}; {member.verifiedEmail}; status: {member.status}
       </p>
@@ -767,7 +765,7 @@ export function InvitationAcceptanceScreen() {
   const workspaceKey = useWorkspaceKey(demo);
   return (
     <main className={styles.screen}>
-      <h1>Simulated invitation acceptance</h1>
+      <h1>Invitation acceptance</h1>
       <BoundaryNotice />
       {demo.activeActor.kind === 'invitation' ? (
         <InvitationJourney key={workspaceKey} />

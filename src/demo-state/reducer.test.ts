@@ -105,7 +105,7 @@ const actions = {
       memberId: ids.members.aspen,
       signatureId: 'signature:new',
       waiverVersionId: ids.waivers.current,
-      typedName: 'Fictional Aspen',
+      typedName: 'Casey Park',
     },
   },
   createStation: {

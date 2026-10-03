@@ -98,9 +98,9 @@ it('downloads a real two-field roster artifact and prints only the roster, not t
       const csv = await readFile(file, 'utf8');
       expect(csv).toBe(
         'Member,Station\r\n' +
-          '"Fictional Maple","Demo North"\r\n' +
-          '"Fictional Moss","Demo Outage"\r\n' +
-          '"Fictional Cedar","Demo West"',
+          '"Maya Chen","Rower 01"\r\n' +
+          '"Jordan Brooks","Rower 02"\r\n' +
+          '"Avery Bennett","Rower 04"',
       );
       expect(csv).not.toMatch(
         /@|waiver|check.?in|outcome|correction|staff:|class:/i,
@@ -136,12 +136,12 @@ it('downloads a real two-field roster artifact and prints only the roster, not t
         'Printable roster',
         'Member',
         'Station',
-        'Fictional Maple',
-        'Demo North',
-        'Fictional Moss',
-        'Demo Outage',
-        'Fictional Cedar',
-        'Demo West',
+        'Maya Chen',
+        'Rower 01',
+        'Jordan Brooks',
+        'Rower 02',
+        'Avery Bennett',
+        'Rower 04',
       ]);
       expect(
         await page
@@ -196,9 +196,9 @@ it('downloads a real two-field roster artifact and prints only the roster, not t
       await escaped.saveAs(escapedFile);
       expect(await readFile(escapedFile, 'utf8')).toBe(
         'Member,Station\r\n' +
-          '"\'=Fictional ""Maple"",\nsecond line","Demo North"\r\n' +
-          '"Fictional Moss","Demo Outage"\r\n' +
-          '"Fictional Cedar","Demo West"',
+          '"\'=Fictional ""Maple"",\nsecond line","Rower 01"\r\n' +
+          '"Jordan Brooks","Rower 02"\r\n' +
+          '"Avery Bennett","Rower 04"',
       );
       expect(errors).toEqual([]);
     } finally {

@@ -36,9 +36,7 @@ describe('visible unexpected-error recovery', () => {
     expect(
       screen.getByRole('heading', { name: 'Demo recovery' }),
     ).toHaveFocus();
-    expect(
-      screen.getByText('SIMULATED DEMO - NOT FOR OPERATIONS'),
-    ).toBeVisible();
+    expect(screen.getByText('Demo · resets on refresh')).toBeVisible();
   });
 
   it('retains the non-operational notice, explains the failure, and safely remounts fresh state', async () => {
@@ -55,9 +53,7 @@ describe('visible unexpected-error recovery', () => {
     await user.click(
       screen.getByRole('button', { name: 'Trigger unexpected failure' }),
     );
-    expect(
-      screen.getByText('SIMULATED DEMO - NOT FOR OPERATIONS'),
-    ).toBeVisible();
+    expect(screen.getByText('Demo · resets on refresh')).toBeVisible();
     expect(screen.getByRole('alert')).toHaveTextContent(/unexpected UI error/i);
     expect(screen.getByRole('alert')).toHaveTextContent(
       /No authoritative data was changed/,
@@ -67,7 +63,7 @@ describe('visible unexpected-error recovery', () => {
     ).toHaveFocus();
     await user.click(
       screen.getByRole('button', {
-        name: 'Recover with fresh fictional state',
+        name: 'Reset and recover',
       }),
     );
     expect(
@@ -76,8 +72,6 @@ describe('visible unexpected-error recovery', () => {
     expect(screen.getByText(DEMO_INITIAL_NOW)).toBeVisible();
     expect(window.location.pathname).toBe('/gym-operations/');
     expect(window.location.hash).toBe('#/');
-    expect(
-      screen.getByText('SIMULATED DEMO - NOT FOR OPERATIONS'),
-    ).toBeVisible();
+    expect(screen.getByText('Demo · resets on refresh')).toBeVisible();
   });
 });

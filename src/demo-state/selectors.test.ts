@@ -46,7 +46,7 @@ describe('demo-state selectors', () => {
       ids.members.maple,
     ]);
     expect(members[0]).toMatchObject({
-      verifiedEmail: 'maple@example.invalid',
+      verifiedEmail: 'maya.chen@example.invalid',
       contactEmail: 'private.contact@example.invalid',
     });
     expect(JSON.stringify(members)).not.toContain('identitySubject');
@@ -129,9 +129,9 @@ describe('demo-state selectors', () => {
 
     expect(roster).toEqual(
       expect.arrayContaining([
-        { memberId: ids.members.willow, displayName: 'Fictional Willow' },
-        { memberId: ids.members.juniper, displayName: 'Fictional Juniper' },
-        { memberId: ids.members.aspen, displayName: 'Fictional Aspen' },
+        { memberId: ids.members.willow, displayName: 'Taylor Reed' },
+        { memberId: ids.members.juniper, displayName: 'Riley Morgan' },
+        { memberId: ids.members.aspen, displayName: 'Casey Park' },
       ]),
     );
     expect(JSON.stringify(roster)).not.toMatch(
@@ -323,9 +323,9 @@ describe('demo-state selectors', () => {
         (booking) => booking.bookingId,
       ),
     ).toEqual([
-      ids.bookings.fullBirch,
       ids.bookings.fullMaple,
       ids.bookings.fullCedar,
+      ids.bookings.fullBirch,
     ]);
     expect(
       selectClassWaitlist(state, ids.classes.full).map(
@@ -338,9 +338,9 @@ describe('demo-state selectors', () => {
     ).toEqual({
       classId: ids.classes.full,
       entries: [
-        { memberDisplayName: 'Fictional Birch', stationLabel: 'Demo East' },
-        { memberDisplayName: 'Fictional Maple', stationLabel: 'Demo North' },
-        { memberDisplayName: 'Fictional Cedar', stationLabel: 'Demo West' },
+        { memberDisplayName: 'Maya Chen', stationLabel: 'Rower 01' },
+        { memberDisplayName: 'Jordan Brooks', stationLabel: 'Rower 02' },
+        { memberDisplayName: 'Sam Patel', stationLabel: 'Rower 03' },
       ],
     });
     expect(selectClassSeatSummary(state, ids.classes.full)).toEqual({
@@ -356,7 +356,7 @@ describe('demo-state selectors', () => {
     const state = createInitialDemoState();
 
     expect(selectMember(state, ids.members.maple)?.displayName).toBe(
-      'Fictional Maple',
+      'Maya Chen',
     );
     expect(
       selectMemberBookings(state, ids.members.maple).map(

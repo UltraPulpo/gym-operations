@@ -26,7 +26,7 @@ describe('StaffAccessScreen', () => {
         await view.user.click(dialog.getByLabelText('Staff ID'));
         await view.user.paste(staffId);
         await view.user.click(
-          dialog.getByLabelText('Fictional identity subject'),
+          dialog.getByLabelText('Simulated identity subject'),
         );
         await view.user.paste('identity:created-coach');
       }
@@ -210,7 +210,7 @@ describe('StaffAccessScreen', () => {
     );
     await view.user.type(
       within(dialog).getByRole('textbox', {
-        name: 'Fictional identity subject',
+        name: 'Simulated identity subject',
       }),
       'identity:demo-new-coach',
     );
@@ -298,12 +298,12 @@ describe('StaffAccessScreen', () => {
     );
     await view.user.clear(
       within(dialog).getByRole('textbox', {
-        name: 'Fictional identity subject',
+        name: 'Simulated identity subject',
       }),
     );
     await view.user.type(
       within(dialog).getByRole('textbox', {
-        name: 'Fictional identity subject',
+        name: 'Simulated identity subject',
       }),
       'identity:demo-front-desk-coach-updated',
     );
@@ -411,7 +411,7 @@ describe('StaffAccessScreen', () => {
     );
     await view.user.type(
       within(dialog).getByRole('textbox', {
-        name: 'Fictional identity subject',
+        name: 'Simulated identity subject',
       }),
       'identity:invalid-no-role',
     );

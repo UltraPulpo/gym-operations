@@ -51,7 +51,7 @@ function scenario(
     scenarioId,
     name,
     category,
-    description: `Fictional, non-operational demonstration. America/Los_Angeles and policy values are illustrative. ${description}`,
+    description,
     illustrative: true,
     defaultActor: { ...defaultActor },
     clockInstant,
@@ -84,7 +84,7 @@ function scheduleConflictState(): DemoState {
         template.templateId === ids.templates.weekA
           ? {
               ...template,
-              name: 'Illustrative conflicting Week A',
+              name: 'Conflicting Week A',
               entries: template.entries.map((entry) =>
                 entry.entryId === ids.templateEntries.monday
                   ? { ...entry, localTime: '09:15' as const }
@@ -95,7 +95,7 @@ function scheduleConflictState(): DemoState {
       ),
       {
         templateId: SCENARIO_DATA_IDS.gapTemplate,
-        name: 'Illustrative zero-gap boundary',
+        name: 'Zero-gap boundary',
         entries: [
           {
             entryId: SCENARIO_DATA_IDS.gapEntry,
@@ -135,7 +135,7 @@ function dstState(): DemoState {
       ...state.weeklyTemplates,
       {
         templateId: SCENARIO_DATA_IDS.dstTemplate,
-        name: 'Illustrative Sunday wall-clock recurrence',
+        name: 'Sunday wall-clock recurrence',
         entries: [
           {
             entryId: SCENARIO_DATA_IDS.dstEntry,

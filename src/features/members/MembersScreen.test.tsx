@@ -83,7 +83,7 @@ describe('staff member management', () => {
     for (const email of [
       'not-an-email',
       'invitee@example.invalid',
-      'maple@example.invalid',
+      'maya.chen@example.invalid',
     ]) {
       const before = view.store.getSnapshot();
       const input = view.getByLabelText('Invitation email');
@@ -102,15 +102,14 @@ describe('staff member management', () => {
     const view = renderWithDemoState(<MembersScreen />, { actor: staff });
     const before = view.store.getSnapshot().state;
     await view.user.click(
-      within(view.getByRole('row', { name: /Fictional Maple/ })).getByRole(
-        'button',
-        { name: 'Edit profile' },
-      ),
+      within(view.getByRole('row', { name: /Maya Chen/ })).getByRole('button', {
+        name: 'Edit profile',
+      }),
     );
     await view.user.clear(view.getByLabelText('Member display name'));
     await view.user.type(
       view.getByLabelText('Member display name'),
-      'Fictional Maple Revised',
+      'Maya Chen Revised',
     );
     await view.user.clear(view.getByLabelText('Verified profile email'));
     await view.user.type(
@@ -126,7 +125,7 @@ describe('staff member management', () => {
     expect(
       after.members.find((m) => m.memberId === ids.members.maple),
     ).toMatchObject({
-      displayName: 'Fictional Maple Revised',
+      displayName: 'Maya Chen Revised',
       verifiedEmail: 'maple-revised@example.invalid',
       contactEmail: 'contact@example.invalid',
       identitySubject: before.members.find(
@@ -142,10 +141,9 @@ describe('staff member management', () => {
   it('rejects profile corrections without mutation and can deny adult eligibility with retained bookings', async () => {
     const view = renderWithDemoState(<MembersScreen />, { actor: staff });
     await view.user.click(
-      within(view.getByRole('row', { name: /Fictional Maple/ })).getByRole(
-        'button',
-        { name: 'Edit profile' },
-      ),
+      within(view.getByRole('row', { name: /Maya Chen/ })).getByRole('button', {
+        name: 'Edit profile',
+      }),
     );
     await view.user.clear(view.getByLabelText('Member display name'));
     const before = view.store.getSnapshot();
@@ -157,7 +155,7 @@ describe('staff member management', () => {
     );
     await view.user.type(
       view.getByLabelText('Member display name'),
-      'Fictional Maple',
+      'Maya Chen',
     );
     await view.user.selectOptions(
       view.getByLabelText('Adult eligibility correction'),
@@ -185,10 +183,9 @@ describe('staff member management', () => {
   it('validates adjustable adult-attestation corrections and retains the requested timestamp', async () => {
     const view = renderWithDemoState(<MembersScreen />, { actor: staff });
     await view.user.click(
-      within(view.getByRole('row', { name: /Fictional Maple/ })).getByRole(
-        'button',
-        { name: 'Edit profile' },
-      ),
+      within(view.getByRole('row', { name: /Maya Chen/ })).getByRole('button', {
+        name: 'Edit profile',
+      }),
     );
     const input = view.getByLabelText(
       'Adult attestation UTC timestamp correction',
@@ -238,7 +235,7 @@ describe('staff member management', () => {
       scenarioId: SCENARIO_IDS.invitationMemberCap,
       actor: staff,
     });
-    const pendingRow = view.getByRole('row', { name: /Fictional Fern/ });
+    const pendingRow = view.getByRole('row', { name: /Jamie Ellis/ });
     const before = view.store.getSnapshot();
     await view.user.click(
       within(pendingRow).getByRole('button', { name: 'Activate' }),
@@ -247,7 +244,7 @@ describe('staff member management', () => {
     expect(
       view.getByText('The active-member cap has been reached.'),
     ).toBeVisible();
-    const mapleRow = view.getByRole('row', { name: /Fictional Maple/ });
+    const mapleRow = view.getByRole('row', { name: /Maya Chen/ });
     await view.user.click(
       within(mapleRow).getByRole('button', { name: 'Deactivate' }),
     );
@@ -270,17 +267,16 @@ describe('staff member management', () => {
     ).toBe('active');
     const full = view.store.getSnapshot();
     await view.user.click(
-      within(view.getByRole('row', { name: /Fictional Maple/ })).getByRole(
-        'button',
-        { name: 'Activate' },
-      ),
+      within(view.getByRole('row', { name: /Maya Chen/ })).getByRole('button', {
+        name: 'Activate',
+      }),
     );
     expect(view.store.getSnapshot()).toBe(full);
   });
 
   it('rejects activation with an outdated waiver and retains inactive queued records for staff review', async () => {
     const view = renderWithDemoState(<MembersScreen />, { actor: staff });
-    const aspenRow = view.getByRole('row', { name: /Fictional Aspen/ });
+    const aspenRow = view.getByRole('row', { name: /Casey Park/ });
     await view.user.click(
       within(aspenRow).getByRole('button', { name: 'Deactivate' }),
     );
@@ -355,7 +351,9 @@ describe('complete local invitation acceptance', () => {
       expect(
         view.queryByRole('button', { name: 'Complete acceptance' }),
       ).not.toBeInTheDocument();
-      expect(view.queryByText('maple@example.invalid')).not.toBeInTheDocument();
+      expect(
+        view.queryByText('maya.chen@example.invalid'),
+      ).not.toBeInTheDocument();
     },
   );
 
@@ -576,7 +574,9 @@ describe('role-scoped presentation and own signing', () => {
       expect(
         view.getByRole('button', { name: 'Create invitation' }),
       ).toBeVisible();
-      expect(view.getByText(/simulated.*not for operations/i)).toBeVisible();
+      expect(
+        view.getByText(/Identity and email outcomes are simulated/),
+      ).toBeVisible();
       expect(
         view.queryByLabelText(/password|credential/i),
       ).not.toBeInTheDocument();
@@ -595,7 +595,7 @@ describe('role-scoped presentation and own signing', () => {
     ).not.toBeInTheDocument();
     expect(view.container.textContent).not.toContain('@');
     expect(view.container.textContent).not.toContain('identity:');
-    expect(view.queryByText('Fictional Fern')).not.toBeInTheDocument();
+    expect(view.queryByText('Jamie Ellis')).not.toBeInTheDocument();
   });
 
   it('shows explicit inactive-staff denial with no directory or management controls', () => {
@@ -603,7 +603,7 @@ describe('role-scoped presentation and own signing', () => {
       actor: { kind: 'staff', staffId: ids.staff.inactive },
     });
     expect(view.getByRole('alert')).toHaveTextContent(/inactive/i);
-    expect(view.queryByText('Fictional Maple')).not.toBeInTheDocument();
+    expect(view.queryByText('Maya Chen')).not.toBeInTheDocument();
     expect(
       view.queryByRole('button', { name: 'Create invitation' }),
     ).not.toBeInTheDocument();
@@ -616,7 +616,7 @@ describe('role-scoped presentation and own signing', () => {
         actor: { kind: 'member', memberId },
       });
       expect(view.getByText(/cannot book or check in/i)).toBeVisible();
-      expect(view.queryByText('Fictional Maple')).not.toBeInTheDocument();
+      expect(view.queryByText('Maya Chen')).not.toBeInTheDocument();
       expect(
         view.queryByText('invitee@example.invalid'),
       ).not.toBeInTheDocument();
@@ -631,7 +631,9 @@ describe('role-scoped presentation and own signing', () => {
       actor: { kind: 'member', memberId: ids.members.aspen },
     });
     expect(view.getByText(/outdated/i)).toBeVisible();
-    expect(view.queryByText('maple@example.invalid')).not.toBeInTheDocument();
+    expect(
+      view.queryByText('maya.chen@example.invalid'),
+    ).not.toBeInTheDocument();
     const before = view.store.getSnapshot();
     await view.user.click(
       view.getByRole('button', { name: 'Sign current waiver' }),

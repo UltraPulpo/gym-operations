@@ -39,26 +39,21 @@ export class DemoErrorBoundary extends Component<
       <div className={styles.app}>
         <header className={styles.header}>
           <p className={styles.brand}>Fitness Junkie Gym Operations</p>
-          <p className={styles.disclaimer}>
-            Fictional data only. No live authentication, email, backend, durable
-            storage, or workout metrics. Demo changes stay in memory and reset
-            on refresh. Do not use this demo to operate classes.
-          </p>
         </header>
-        <p className={styles.boundary}>SIMULATED DEMO - NOT FOR OPERATIONS</p>
+        <aside aria-label="Demo boundary" className={styles.boundary}>
+          Demo · resets on refresh
+        </aside>
         {this.state.failed ? (
           <main className={styles.content}>
             <h1 ref={this.heading} tabIndex={-1}>
               Demo recovery
             </h1>
             <Alert>
-              An unexpected UI error interrupted this fictional demo. No
-              authoritative data was changed. Recovery discards local demo edits
-              and restores the overview, default persona, and frozen clock.
+              An unexpected UI error interrupted the demo. No authoritative data
+              was changed. Recovery discards local demo edits and restores the
+              overview, default persona, and frozen clock.
             </Alert>
-            <Button onClick={this.recover}>
-              Recover with fresh fictional state
-            </Button>
+            <Button onClick={this.recover}>Reset and recover</Button>
           </main>
         ) : (
           <Fragment key={this.state.generation}>{this.props.children}</Fragment>

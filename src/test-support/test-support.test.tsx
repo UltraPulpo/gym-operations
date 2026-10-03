@@ -107,6 +107,7 @@ describe('renderWithDemoState', () => {
     expect(view.store.getSnapshot()).toEqual({
       state: createInitialDemoState(),
       hasUnsavedEdits: false,
+      workspaceVersion: 0,
     });
     expect(view.getByLabelText('Delivery')).toHaveTextContent('success');
 

@@ -294,11 +294,8 @@ function AttendanceWorkspace() {
     <section className={styles.screen} aria-labelledby="attendance-title">
       <h1 id="attendance-title">Attendance and outage roster</h1>
       <p className={styles.notice}>
-        Fictional, non-operational simulation only. Nothing is sent or
-        persisted; refresh resets demo data. Do not enter real personal
-        information or use this demo to operate classes. Role visibility is a
-        demonstration, not authentication. Offline booking is unsupported.
-        Manual reconciliation changes attendance only, never bookings.
+        Manual reconciliation changes attendance only, never bookings. Offline
+        booking is unsupported.
       </p>
       {!capabilities.success ? (
         <Alert>{capabilities.error.message}</Alert>

@@ -14,6 +14,29 @@ service worker, offline booking, or live identity/email integration.
 `America/Los_Angeles` is the user-confirmed illustrative demo and DST test zone,
 not approved operational gym policy.
 
+## Responsive workspace
+
+Seed records use invented full names, natural class descriptions and station
+labels, and reserved `example.invalid` addresses. Fixture IDs and scenario
+rules are unchanged. One persistent **Demo · resets on refresh** notice marks
+the site; identity/email simulation and non-legal waiver notices remain at
+their relevant actions.
+
+Demo controls start collapsed on every screen, with the current persona and
+clock visible. Expand **Demo controls** for persona/scenario selection, clock
+steps, and reset. Phones use a **Navigation** disclosure; desktop keeps the
+sidebar. Shared CSS tokens and CSS Modules provide the visual system without
+Material UI or additional dependencies.
+
+Stations start in **View layout**. Select a compact tile to inspect its
+coordinates, state, and authorized details; members never see assigned names.
+Only an active Admin can choose **Edit layout** to expose existing management
+and placement controls. Arrow keys navigate; Enter/Space picks and drops;
+Escape or **Cancel placement** cancels the pending pick. **Finish editing**
+does not undo submitted changes. Touch placement uses two taps. The map keeps
+physical coordinates and scrolls locally on narrow screens. Station/row/column
+removal and dense-table redesign are not included.
+
 ## Local tooling
 
 Use Node.js 22.12+ and npm 10+ (Node.js 24 LTS recommended).
@@ -66,11 +89,12 @@ npx playwright test --grep '@smoke'
 Quote `'@smoke'` in **Windows PowerShell**: an unquoted `@smoke` is interpreted
 as splatting and can silently remove the selector, resulting in incorrect
 selection or "No tests found". The quoted command also works in Bash.
-The smoke selection currently contains **14 tests**, covering startup/reset,
+The smoke selection currently contains **18 tests**, covering startup/reset,
 staff permissions, invitation/current-waiver acceptance, whole-template overlap
 rejection, stale booking conflict, eligible FIFO promotion, exact-end no-show,
-keyboard navigation/dialogs/forms/station grids, and a representative axe scan.
-The full suite currently contains **104 tests** across five spec files.
+keyboard navigation/dialogs/forms/station grids, responsive layouts at 320,
+390, 768 and 1440 pixels, and representative axe scans.
+The full suite currently contains **109 tests** across six spec files.
 
 To build and run the full browser suite in one command:
 
@@ -129,28 +153,44 @@ repository paths requires updating that gate and the workflow as well.
 
 ## CI and Pages release boundary
 
-`.github/workflows/ci-pages.yml` runs on pull requests and pushes to `main`.
-Read-only local `origin/HEAD` metadata identifies `origin/main` as the repository
-default branch. If the default branch changes, update the push trigger, artifact
-and deployment guards, and their regression test together.
+`.github/workflows/ci-pages.yml` runs on pull requests, pushes to `main`, and
+manual **Run workflow** requests. Automatic publication stays on `main`; manual
+runs can publish a selected branch. If the default branch changes, update the
+push trigger, artifact/deployment guards, and regression tests together.
 
-Both events run locked dependency installation, Chromium/OS setup, formatting,
+All events run locked dependency installation, Chromium/OS setup, formatting,
 lint, type checks, the complete Vitest/RTL suite, and production build. Pull
-requests run the 14-test smoke selection; default-branch pushes run all 104
-browser tests. Tests start their own built-static preview server. Any failed
+requests run the smoke selection; main pushes and manual runs execute the full
+browser suite. Tests start their own built-static preview server. Any failed
 quality, build, or browser step prevents Pages artifact upload and deployment.
 The existing Vite warning about the roughly 601 kB JavaScript chunk remains
 visible; the size limit is not raised or hidden.
 
-Only a successful **push to `main`** can upload `dist` and enter the dependent
-Pages deployment job. Pull requests, including fork PRs, cannot deploy; there is
+Only a successful **push to `main`** or **manual dispatch on a branch ref** can
+upload `dist` and enter the dependent Pages deployment job. Dispatched tags,
+automatic non-main pushes, and pull requests (including fork PRs) cannot deploy; there is
 no `pull_request_target` trigger. The checks job has only `contents: read`.
 `pages: write` and `id-token: write` are granted only to the deploy job, which
 uses the `github-pages` environment. The artifact is static assets only, with
 no production endpoint or identity/email secrets configured.
 
-The repository owner must select **GitHub Actions** as the Pages source in
-repository settings and configure any desired environment protections and
-required PR checks. This repository provides the workflow configuration; local
-verification does not execute remote Actions or publish Pages. Pushing, PR
-creation, and deployment are left to the owner.
+To publish a branch, the owner selects **GitHub Actions** as the Pages source,
+then opens **Actions → Static demo checks and Pages → Run workflow**, selects
+the branch and starts the run. The dispatch-capable workflow generally must
+first exist on the default branch for that button to appear; the selected
+branch must also contain the workflow. Checks and deployment use the same
+selected revision, not a separately supplied branch input.
+
+The `github-pages` environment must allow the selected branch and may require
+approval. Adjust its deployment branch rules if checks pass but publication
+is blocked. Publish built `dist` only: **Deploy from a branch** pointing at the
+repository root publishes source HTML and produces missing `/src/app/main.tsx`
+or MIME-type errors. The built asset base remains `/gym-operations/`.
+
+All branches publish to **one Pages site**, not independent previews. Manual
+publication replaces the currently served build. Checks have branch-scoped
+concurrency; publication has one shared group and does not cancel a running
+deploy. GitHub may replace pending jobs in a concurrency group and does not
+guarantee FIFO ordering; the last completed publication is what visitors see.
+Local checks do not execute remote Actions, change settings, or publish Pages.
+Pushing, PR creation, and remote deployment remain the owner's responsibility.

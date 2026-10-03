@@ -174,8 +174,8 @@ describe('resettable fictional scenario catalog', () => {
       expect(scenario.illustrative).toBe(true);
       expect(state.settings.illustrative).toBe(true);
       expect(scenario.name.trim()).not.toBe('');
-      expect(scenario.description).toMatch(/fictional/i);
-      expect(scenario.description).toMatch(/illustrative/i);
+      expect(scenario.description.trim().length).toBeGreaterThan(20);
+      expect(scenario.description).not.toMatch(/^Fictional|^Demo/);
       const presets = value(getScenarioClockPresets(scenario.scenarioId));
       expect(presets[0]).toMatchObject({
         presetId: state.clock.presetId,
@@ -694,7 +694,7 @@ describe('scenario workflow semantics', () => {
           memberId: ids.members.aspen,
           signatureId: 'signature:scenario-aspen-current',
           waiverVersionId: ids.waivers.current,
-          typedName: 'Fictional Aspen',
+          typedName: 'Casey Park',
         },
         state.clock.now,
       ),

@@ -683,7 +683,7 @@ function ScheduleWorkspace() {
       ) ?? [];
     const delivery = newNotifications.length
       ? [
-          `Simulated notifications: ${newNotifications.filter((item) => item.status === 'sent').length} sent, ${newNotifications.filter((item) => item.status === 'failed').length} failed. No email transmitted.`,
+          `Simulated delivery: ${newNotifications.filter((item) => item.status === 'sent').length} sent, ${newNotifications.filter((item) => item.status === 'failed').length} failed. No email transmitted.`,
         ]
       : [];
     setFeedback({
@@ -705,10 +705,6 @@ function ScheduleWorkspace() {
   return (
     <main className={styles.screen}>
       <h1>Schedule</h1>
-      <p>
-        Fictional, non-operational demonstration. Refresh resets data. No live
-        authentication, shared persistence or real email.
-      </p>
       <p>
         America/Los_Angeles is illustrative, not approved gym policy. Recurring
         wall-clock times remain stable across DST; displayed offsets use Luxon

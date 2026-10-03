@@ -77,9 +77,8 @@ export function BookingsScreen() {
     <section className={styles.screen}>
       <h1>Bookings and waitlists</h1>
       <p>
-        Fictional, non-operational demo only. Reservations are local
-        simulations, not authoritative bookings. No email is sent; refresh
-        resets all data. Offline booking is unsupported.
+        Reservations are local simulations, not authoritative bookings. No email
+        is sent. Offline booking is unsupported.
       </p>
       <BookingsWorkspace
         key={`${JSON.stringify(demo.activeActor)}:${demo.state.scenarioId}`}

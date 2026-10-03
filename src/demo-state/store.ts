@@ -18,6 +18,7 @@ import { validateAction } from './validation';
 export interface DemoStoreSnapshot {
   readonly state: DemoState;
   readonly hasUnsavedEdits: boolean;
+  readonly workspaceVersion: number;
 }
 
 export interface SubmitOptions {
@@ -127,6 +128,7 @@ export function createDemoStore(
   let snapshot: DemoStoreSnapshot = {
     state,
     hasUnsavedEdits: state.revision !== baselineRevision,
+    workspaceVersion: baselineRevision,
   };
   const listeners = new Set<() => void>();
 
@@ -134,6 +136,7 @@ export function createDemoStore(
     snapshot = {
       state,
       hasUnsavedEdits: state.revision !== baselineRevision,
+      workspaceVersion: baselineRevision,
     };
   };
 

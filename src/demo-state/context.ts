@@ -25,6 +25,7 @@ export interface DemoStateApi {
   readonly now: UtcInstant;
   readonly capabilities: DomainResult<DemoCapabilities>;
   readonly hasUnsavedEdits: boolean;
+  readonly workspaceVersion: number;
   readonly dispatch: (accepted: AcceptedAction) => void;
   readonly validate: DemoStore['validate'];
   readonly submit: DemoStore['submit'];
@@ -59,6 +60,7 @@ export function useDemoState(): DemoStateApi {
       now: snapshot.state.clock.now,
       capabilities: selectCapabilities(snapshot.state),
       hasUnsavedEdits: snapshot.hasUnsavedEdits,
+      workspaceVersion: snapshot.workspaceVersion,
       dispatch: store.dispatch,
       validate: store.validate,
       submit: store.submit,

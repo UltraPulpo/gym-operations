@@ -12,14 +12,12 @@ export function DemoOverview() {
   });
   return (
     <main>
-      <p className={styles.eyebrow}>
-        A fictional rowing studio / in-memory playground
-      </p>
+      <p className={styles.eyebrow}>Rowing studio / in-memory playground</p>
       <h1>Demo overview</h1>
       <p className={styles.lead}>
-        Explore a class from invitation to attendance. Switch one fictional
-        persona at a time, try a named edge case, and advance the frozen clock
-        deliberately. Nothing here reserves a real station or operates a class.
+        Explore a class from invitation to attendance. Switch one persona at a
+        time, try a named edge case, and advance the frozen clock deliberately.
+        Nothing here reserves a real station or operates a class.
       </p>
       <div className={styles.metrics}>
         <div>
@@ -30,7 +28,7 @@ export function DemoOverview() {
           <strong>
             {demo.state.stations.filter((station) => station.inService).length}
           </strong>
-          <span>In-service fictional stations</span>
+          <span>In-service stations</span>
         </div>
         <div>
           <strong>{demo.scenarios.length}</strong>
@@ -57,7 +55,8 @@ export function DemoOverview() {
       </div>
       <h2>Safe by design, not an operational system</h2>
       <p>
-        All identities, addresses, avatars, and waiver text are fictional.
+        No live authentication, email, backend, or durable storage. All
+        identities, addresses, avatars, and waiver text are fictional.
         Signatures are non-legal placeholders. No APIs, email delivery, browser
         storage, multi-user coordination, or offline booking are provided.
         Refresh or reset to discard this browser's changes.

@@ -1,4 +1,5 @@
 /// <reference lib="dom" />
+import { openControls, openNavigation, editLayout } from './workspace';
 
 import { readFile } from 'node:fs/promises';
 import AxeBuilder from '@axe-core/playwright';
@@ -7,7 +8,7 @@ import { expect, test, type Page } from '@playwright/test';
 type Outcome = 'success' | 'failure';
 const admin = 'staff:demo-admin';
 const coach = 'staff:demo-coach';
-const indigo = 'Fictional Coach Indigo';
+const indigo = 'Alex Rivera';
 const requestEvidence = new WeakMap<
   Page,
   { observed: string[]; unexpected: string[]; pageErrors: string[] }
@@ -68,20 +69,23 @@ test.afterEach(async ({ page }, testInfo) => {
 
 async function openDemo(page: Page, route = '/') {
   const response = await page.goto(`./#${route}`);
+  await openControls(page);
+  if (route === '/stations') await editLayout(page);
   expect(response?.ok()).toBe(true);
   await expect(
     page.getByRole('navigation', { name: 'Demo navigation' }),
   ).toBeVisible();
-  await expect(page.getByLabel('Fictional persona')).toHaveValue(admin);
+  await expect(page.getByLabel('Persona', { exact: true })).toHaveValue(admin);
   await expect(page.getByLabel('Frozen demo clock')).toHaveText(
     '2026-10-05T15:45:00Z',
   );
   await expect(
-    page.getByText('SIMULATED DEMO - NOT FOR OPERATIONS', { exact: true }),
+    page.getByText('Demo · resets on refresh', { exact: true }),
   ).toBeVisible();
 }
 
 async function navigate(page: Page, name: string) {
+  await openNavigation(page);
   const link = page
     .getByRole('navigation', { name: 'Demo navigation' })
     .getByRole('link', { name, exact: true });
@@ -91,11 +95,12 @@ async function navigate(page: Page, name: string) {
   }
   await link.click();
   await expect(page.locator('#demo-workspace h1').first()).toBeFocused();
+  if (name === 'Stations') await editLayout(page);
 }
 
 async function persona(page: Page, value: string) {
-  await page.getByLabel('Fictional persona').selectOption(value);
-  await expect(page.getByLabel('Fictional persona')).toHaveValue(value);
+  await page.getByLabel('Persona', { exact: true }).selectOption(value);
+  await expect(page.getByLabel('Persona', { exact: true })).toHaveValue(value);
 }
 
 async function scenario(page: Page, name: string) {
@@ -242,7 +247,7 @@ for (const event of emailEvents) {
           .click();
         verifyOperation = async () => {
           await navigate(page, 'Members');
-          const row = dataRows(page, 'Fictional invitations').filter({
+          const row = dataRows(page, 'Invitations').filter({
             hasText: recipient,
           });
           await expect(row).toHaveCount(1);
@@ -250,7 +255,7 @@ for (const event of emailEvents) {
           await expect(row).toContainText('2026-10-12T15:45:00Z');
         };
       } else if (event === 'Booking confirmation') {
-        recipient = 'juniper@example.invalid';
+        recipient = 'riley.morgan@example.invalid';
         await persona(page, 'member:juniper');
         await navigate(page, 'Bookings');
         await page
@@ -272,14 +277,14 @@ for (const event of emailEvents) {
             .getByLabel('Class', { exact: true })
             .selectOption('class:demo-free');
           const row = dataRows(page, 'Class roster and booking history').filter(
-            { hasText: 'Fictional Juniper' },
+            { hasText: 'Riley Morgan' },
           );
           await expect(row).toHaveCount(1);
-          await expect(row.getByRole('cell').nth(1)).toHaveText('Demo West');
+          await expect(row.getByRole('cell').nth(1)).toHaveText('Rower 02');
           await expect(row.getByRole('cell').nth(2)).toHaveText('booked');
         };
       } else if (event === 'Waitlist promotion') {
-        recipient = 'willow@example.invalid';
+        recipient = 'taylor.reed@example.invalid';
         await persona(page, 'member:maple');
         await navigate(page, 'Bookings');
         await page
@@ -299,36 +304,33 @@ for (const event of emailEvents) {
             .getByLabel('Class', { exact: true })
             .selectOption('class:demo-full');
           const roster = dataRows(page, 'Class roster and booking history');
-          const promoted = roster.filter({ hasText: 'Fictional Willow' });
+          const promoted = roster.filter({ hasText: 'Taylor Reed' });
           await expect(promoted).toHaveCount(1);
           await expect(promoted.getByRole('cell').nth(1)).toHaveText(
-            'Demo North',
+            'Rower 01',
           );
           await expect(promoted.getByRole('cell').nth(2)).toHaveText('booked');
           await expect(
-            roster
-              .filter({ hasText: 'Fictional Maple' })
-              .getByRole('cell')
-              .nth(2),
+            roster.filter({ hasText: 'Maya Chen' }).getByRole('cell').nth(2),
           ).toHaveText('cancelled');
           await expect(
             dataRows(page, 'FIFO waitlist').filter({
-              hasText: 'Fictional Willow',
+              hasText: 'Taylor Reed',
             }),
           ).toHaveCount(0);
           await expect(
             dataRows(page, 'FIFO waitlist').filter({
-              hasText: 'Fictional Aspen',
+              hasText: 'Casey Park',
             }),
           ).toHaveCount(1);
           await expect(
             dataRows(page, 'FIFO waitlist').filter({
-              hasText: 'Fictional Moss',
+              hasText: 'Avery Bennett',
             }),
           ).toHaveCount(1);
         };
       } else {
-        recipient = 'maple@example.invalid';
+        recipient = 'maya.chen@example.invalid';
         await navigate(page, 'Schedule');
         const form = page.getByRole('form', { name: 'Scheduled class editor' });
         const classId =
@@ -356,17 +358,14 @@ for (const event of emailEvents) {
               .getByLabel('Class', { exact: true })
               .selectOption(classId);
             const roster = dataRows(page, 'Class roster and booking history');
-            for (const name of ['Maple', 'Cedar', 'Birch']) {
+            for (const name of ['Maya Chen', 'Jordan Brooks', 'Sam Patel']) {
               await expect(
-                roster
-                  .filter({ hasText: `Fictional ${name}` })
-                  .getByRole('cell')
-                  .nth(2),
+                roster.filter({ hasText: name }).getByRole('cell').nth(2),
               ).toHaveText('cancelled');
             }
-            await expect(
-              roster.filter({ hasText: 'Fictional Willow' }),
-            ).toHaveCount(0);
+            await expect(roster.filter({ hasText: 'Taylor Reed' })).toHaveCount(
+              0,
+            );
           };
         } else {
           const field = event.slice('Class change: '.length);
@@ -400,7 +399,7 @@ for (const event of emailEvents) {
                 ? '2026-10-07 09:00'
                 : field === 'start time'
                   ? '2026-10-05 09:15'
-                  : 'Coach: Fictional Coach Coral',
+                  : 'Coach: Morgan Ellis',
             );
             await expect(article).toContainText(
               `Late-cancel waiver: ${field === 'start time' ? 'yes' : 'no'}`,
@@ -412,7 +411,7 @@ for (const event of emailEvents) {
             const row = dataRows(
               page,
               'Class roster and booking history',
-            ).filter({ hasText: 'Fictional Maple' });
+            ).filter({ hasText: 'Maya Chen' });
             await expect(row.getByRole('cell').nth(2)).toHaveText('booked');
           };
         }
@@ -447,9 +446,9 @@ test('downloaded roster bytes and actual print output contain only members and a
   await openDemo(page, '/attendance');
   await page.getByLabel('Attendance class').selectOption('class:demo-check-in');
   const entries = [
-    ['Fictional Maple', 'Demo North'],
-    ['Fictional Moss', 'Demo Outage'],
-    ['Fictional Cedar', 'Demo West'],
+    ['Maya Chen', 'Rower 01'],
+    ['Jordan Brooks', 'Rower 02'],
+    ['Avery Bennett', 'Rower 04'],
   ];
   const printable = dataRows(page, 'Printable roster');
   await expect(printable).toHaveCount(entries.length);
@@ -592,7 +591,7 @@ for (const name of ['Baseline', 'Unavailable layout', 'Stale layout']) {
       ),
     ).toBeVisible();
     const row = dataRows(page, 'Class attendance roster').filter({
-      hasText: 'Fictional Cedar',
+      hasText: 'Jordan Brooks',
     });
     await expect(row).toContainText('Attended');
     await expect(row).toContainText('Manual outage');
@@ -601,7 +600,7 @@ for (const name of ['Baseline', 'Unavailable layout', 'Stale layout']) {
     const correction = page.getByRole('form', { name: 'Correct attendance' });
     await correction
       .getByLabel('Attendance record')
-      .selectOption({ label: 'Fictional Cedar' });
+      .selectOption({ label: 'Jordan Brooks' });
     await correction.getByLabel('Corrected outcome').selectOption('noShow');
     await correction
       .getByLabel('Correction reason')
@@ -633,7 +632,7 @@ for (const name of ['Baseline', 'Unavailable layout', 'Stale layout']) {
       page,
       'Class roster and booking history',
     ).filter({
-      hasText: 'Fictional Cedar',
+      hasText: 'Jordan Brooks',
     });
     await expect(reconciled).toContainText('No-show; Not checked in');
     if (name !== 'Baseline') {
@@ -669,7 +668,7 @@ test('manual attendance without a booking creates an attendance-only record', as
     .fill('Fictional walk-in paper attendance only.');
   await form.getByRole('button', { name: 'Record manual attendance' }).click();
   const row = dataRows(page, 'Class attendance roster').filter({
-    hasText: 'Fictional Juniper',
+    hasText: 'Riley Morgan',
   });
   await expect(row).toContainText('No assigned station');
   await expect(row).toContainText('No active booking');
@@ -685,13 +684,13 @@ test('manual attendance without a booking creates an attendance-only record', as
 
 async function assertMemberPrivacy(
   page: Page,
-  privateEmail = 'coach-indigo@example.invalid',
+  privateEmail = 'alex.rivera@example.invalid',
   phone = '555-0109',
 ) {
   const workspace = page.locator('#demo-workspace');
   const markup = await workspace.innerHTML();
   expect(markup).not.toContain(privateEmail);
-  expect(markup).not.toContain('coach-coral@example.invalid');
+  expect(markup).not.toContain('morgan.ellis@example.invalid');
   expect(markup).not.toContain(phone);
   expect(markup).not.toContain('identity:');
   await expect(
@@ -709,7 +708,7 @@ test('Coach edits only their own biography and local generated avatar; members s
   await openDemo(page, '/coaches');
   await persona(page, coach);
   const coralBefore = await page
-    .getByRole('region', { name: 'Fictional Coach Coral profile', exact: true })
+    .getByRole('region', { name: 'Morgan Ellis profile', exact: true })
     .innerText();
   const form = page.getByRole('form', { name: `Edit ${indigo}`, exact: true });
   await expect(page.getByRole('form')).toHaveCount(1);
@@ -739,12 +738,12 @@ test('Coach edits only their own biography and local generated avatar; members s
       .locator('rect'),
   ).toHaveAttribute('fill', '#9f1239');
   await expect(
-    profile.getByText('coach-indigo@example.invalid', { exact: true }),
+    profile.getByText('alex.rivera@example.invalid', { exact: true }),
   ).toBeVisible();
   expect(
     await page
       .getByRole('region', {
-        name: 'Fictional Coach Coral profile',
+        name: 'Morgan Ellis profile',
         exact: true,
       })
       .innerText(),
@@ -753,7 +752,7 @@ test('Coach edits only their own biography and local generated avatar; members s
   await expect(profile).toContainText(
     'Fictional coach keyboard-friendly technique biography.',
   );
-  await expect(profile).toContainText('Illustrative rowing certificate');
+  await expect(profile).toContainText('Rowing instructor');
   await expect(
     profile.getByRole('img', { name: `${indigo} generated avatar` }),
   ).toBeVisible();
@@ -762,7 +761,7 @@ test('Coach edits only their own biography and local generated avatar; members s
     exact: true,
   });
   await expect(history.getByRole('listitem')).toHaveCount(1);
-  await expect(history).toContainText('Demo Technique - 2026-10-02 08:00');
+  await expect(history).toContainText('Rowing Foundations - 2026-10-02 08:00');
   await expect(history).not.toContainText('2026-10-05');
   await assertMemberPrivacy(page);
   await navigate(page, 'Schedule');
@@ -863,7 +862,7 @@ test('a newly created Coach requires Admin initialization before own-profile edi
     .getByLabel('Staff ID', { exact: true })
     .fill('staff:fictional-new-coach');
   await dialog
-    .getByLabel('Fictional identity subject')
+    .getByLabel('Simulated identity subject')
     .fill('identity:fictional-new-coach');
   await dialog.getByLabel('Coach role', { exact: true }).check();
   await dialog
@@ -924,9 +923,9 @@ test('member class details include the assigned coach generated photo as well as
   });
   await expect(details).toContainText(indigo);
   await expect(details).toContainText(
-    'Fictional technique coach for the demonstration.',
+    'Technique-focused coaching for confident, efficient rowing.',
   );
-  await expect(details).toContainText('Illustrative rowing certificate');
+  await expect(details).toContainText('Rowing instructor');
   await assertMemberPrivacy(page);
   await expect(
     details.getByRole('img', {
@@ -983,15 +982,13 @@ test('startup, confirmed reset and hash-route refresh restore ephemeral fixtures
   await persona(page, coach);
   await page.getByRole('button', { name: 'Reset demo', exact: true }).click();
   const reset = page.getByRole('alertdialog', {
-    name: 'Reset fictional demo?',
+    name: 'Reset demo?',
   });
   await expect(
     reset.getByRole('button', { name: 'Cancel', exact: true }),
   ).toBeFocused();
-  await reset
-    .getByRole('button', { name: 'Reset fictional state', exact: true })
-    .click();
-  await expect(page.getByLabel('Fictional persona')).toHaveValue(admin);
+  await reset.getByRole('button', { name: 'Reset data', exact: true }).click();
+  await expect(page.getByLabel('Persona', { exact: true })).toHaveValue(admin);
   await expect(page.getByLabel('Frozen demo clock')).toHaveText(
     '2026-10-05T15:45:00Z',
   );
@@ -999,12 +996,12 @@ test('startup, confirmed reset and hash-route refresh restore ephemeral fixtures
     page
       .getByRole('form', { name: `Edit ${indigo}`, exact: true })
       .getByLabel('Biography', { exact: true }),
-  ).toHaveValue('Fictional technique coach for the demonstration.');
+  ).toHaveValue('Technique-focused coaching for confident, efficient rowing.');
   await page.getByRole('button', { name: '+1 minute', exact: true }).click();
   await persona(page, coach);
   await page.reload();
   await expect(page).toHaveURL(/#\/coaches$/);
-  await expect(page.getByLabel('Fictional persona')).toHaveValue(admin);
+  await expect(page.getByLabel('Persona', { exact: true })).toHaveValue(admin);
   await expect(page.getByLabel('Frozen demo clock')).toHaveText(
     '2026-10-05T15:45:00Z',
   );
@@ -1047,7 +1044,7 @@ for (const [route, actor] of [
     for (const width of [1280, 390]) {
       await page.setViewportSize({ width, height: 900 });
       await expect(
-        page.getByText('SIMULATED DEMO - NOT FOR OPERATIONS', { exact: true }),
+        page.getByText('Demo · resets on refresh', { exact: true }),
       ).toBeVisible();
       await scan(page);
     }
@@ -1064,7 +1061,9 @@ test('keyboard navigation, modal focus trap and real form submission remain oper
   await expect(page.locator('#demo-workspace')).toBeFocused();
   await skip.focus();
   await page.keyboard.press('Tab');
-  await expect(page.getByLabel('Fictional persona')).toBeFocused();
+  await expect(page.locator('summary')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByLabel('Persona', { exact: true })).toBeFocused();
   const link = page
     .getByRole('navigation', { name: 'Demo navigation' })
     .getByRole('link', { name: 'Staff access', exact: true });
@@ -1097,7 +1096,7 @@ test('keyboard navigation, modal focus trap and real form submission remain oper
   await page.keyboard.press('Enter');
   await page.keyboard.type('staff:keyboard-coach');
   await page.keyboard.press('Tab');
-  await expect(dialog.getByLabel('Fictional identity subject')).toBeFocused();
+  await expect(dialog.getByLabel('Simulated identity subject')).toBeFocused();
   await page.keyboard.type('identity:keyboard-coach');
   await page.keyboard.press('Tab');
   await expect(
@@ -1116,7 +1115,7 @@ test('keyboard navigation, modal focus trap and real form submission remain oper
   await page.keyboard.press('Enter');
   await expect(dialog).toHaveCount(0);
   await expect(
-    dataRows(page, 'Fictional staff accounts').filter({
+    dataRows(page, 'Staff accounts').filter({
       hasText: 'staff:keyboard-coach',
     }),
   ).toContainText('Coach');
@@ -1137,7 +1136,7 @@ test('keyboard station-grid swap and Escape preserve bookings and station identi
   await page.getByLabel('Class overlay').selectOption('class:demo-check-in');
   const grid = page.getByRole('grid', { name: 'Station layout' });
   const north = grid.getByRole('button', {
-    name: /Row 1, column 1: Demo North,/,
+    name: /Row 1, column 1: Rower 01,/,
   });
   await north.focus();
   await page.keyboard.press('Enter');
@@ -1153,7 +1152,7 @@ test('keyboard station-grid swap and Escape preserve bookings and station identi
   await expect(north).toBeFocused();
   await page.keyboard.press('ArrowDown');
   const west = grid.getByRole('button', {
-    name: /Row 2, column 1: Demo West,/,
+    name: /Row 2, column 1: Rower 02,/,
   });
   await expect(west).toBeFocused();
   await page.keyboard.press('Escape');
@@ -1170,10 +1169,10 @@ test('keyboard station-grid swap and Escape preserve bookings and station identi
     'Station placed',
   );
   await expect(
-    grid.getByRole('button', { name: /Row 1, column 1: Demo West,/ }),
+    grid.getByRole('button', { name: /Row 1, column 1: Rower 02,/ }),
   ).toBeVisible();
   await expect(
-    grid.getByRole('button', { name: /Row 2, column 1: Demo North,/ }),
+    grid.getByRole('button', { name: /Row 2, column 1: Rower 01,/ }),
   ).toBeVisible();
   await scan(page);
   await navigate(page, 'Bookings');

@@ -297,7 +297,7 @@ describe('member booking workflows', () => {
     ).not.toBeInTheDocument();
     expect(
       within(screen.getByLabelText('Free station')).queryByRole('option', {
-        name: /Demo East/,
+        name: /Rower 03/,
       }),
     ).not.toBeInTheDocument();
   });
@@ -425,9 +425,13 @@ describe('member booking workflows', () => {
       ids.classes.full,
     ]);
     expect(screen.queryByLabelText('Booked member')).not.toBeInTheDocument();
-    expect(screen.queryByText('Fictional Maple')).not.toBeInTheDocument();
-    expect(screen.queryByText('maple@example.invalid')).not.toBeInTheDocument();
-    expect(screen.getByText(/non-operational/i)).toBeVisible();
+    expect(screen.queryByText('Maya Chen')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('maya.chen@example.invalid'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/Reservations are local simulations/),
+    ).toBeVisible();
   });
 
   it('books an explicitly chosen free station and retains the confirmed booking on simulated email failure', async () => {
@@ -495,7 +499,7 @@ describe('member booking workflows', () => {
     ).not.toBeInTheDocument();
     expect(
       within(screen.getByLabelText('Free station')).queryByRole('option', {
-        name: /Demo East/,
+        name: /Rower 03/,
       }),
     ).not.toBeInTheDocument();
   });
@@ -556,7 +560,7 @@ describe('member booking workflows', () => {
       status: 'waiting',
     });
     expect(entries.at(-1)?.entryId).not.toBe(joined.entryId);
-    expect(screen.queryByText('Fictional Willow')).not.toBeInTheDocument();
+    expect(screen.queryByText('Taylor Reed')).not.toBeInTheDocument();
   });
 
   it('cancels through exact class start as late cancellation without automatic promotion at cutoff', async () => {
@@ -617,15 +621,15 @@ describe('staff roster and confirmed reseating', () => {
     const roster = screen.getByRole('table', {
       name: 'Class roster and booking history',
     });
-    expect(roster).toHaveTextContent('Fictional Willow');
+    expect(roster).toHaveTextContent('Taylor Reed');
     expect(roster).toHaveTextContent('Late cancel');
-    expect(roster).toHaveTextContent('Fictional Juniper');
+    expect(roster).toHaveTextContent('Riley Morgan');
     expect(roster).toHaveTextContent('Staff removal');
-    expect(roster).toHaveTextContent('Fictional Birch');
+    expect(roster).toHaveTextContent('Sam Patel');
     expect(roster).toHaveTextContent('No-show to Attended');
     expect(
       screen.getByRole('table', { name: 'FIFO waitlist' }),
-    ).toHaveTextContent('Fictional Aspen');
+    ).toHaveTextContent('Casey Park');
     expect(screen.queryByText('private.contact@example.invalid')).toBeNull();
     expect(
       screen.queryByText('member:aspen (name unavailable to this persona)'),
@@ -638,9 +642,9 @@ describe('staff roster and confirmed reseating', () => {
     const roster = screen.getByRole('table', {
       name: 'Class roster and booking history',
     });
-    expect(roster).toHaveTextContent('Demo North');
-    expect(roster).toHaveTextContent('Demo West');
-    expect(roster).toHaveTextContent('Demo East');
+    expect(roster).toHaveTextContent('Rower 01');
+    expect(roster).toHaveTextContent('Rower 02');
+    expect(roster).toHaveTextContent('Rower 03');
     expect(
       screen.getByRole('button', { name: 'Review reseating' }),
     ).toBeDisabled();
@@ -936,7 +940,7 @@ describe('staff roster and confirmed reseating', () => {
         screen.getByRole('table', { name: 'Class roster and booking history' }),
       ).toHaveTextContent('Checked in');
       expect(
-        screen.queryByText('maple@example.invalid'),
+        screen.queryByText('maya.chen@example.invalid'),
       ).not.toBeInTheDocument();
     },
   );
@@ -1202,9 +1206,7 @@ describe('staff roster and confirmed reseating', () => {
     expect(screen.getByRole('alertdialog')).toHaveAccessibleName(
       'Confirm occupied-station swap',
     );
-    expect(screen.getByRole('alertdialog')).toHaveTextContent(
-      'Fictional Cedar',
-    );
+    expect(screen.getByRole('alertdialog')).toHaveTextContent('Jordan Brooks');
     await user.keyboard('{Escape}');
     expect(store.getSnapshot()).toBe(before);
     expect(

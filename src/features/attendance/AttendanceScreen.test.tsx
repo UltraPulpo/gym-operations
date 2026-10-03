@@ -58,18 +58,18 @@ describe('attendance role and privacy projections', () => {
     const { container } = renderWithDemoState(<AttendanceScreen />, {
       actor: cedar,
     });
-    expect(attendanceRow('Fictional Cedar')).toHaveTextContent(
-      'Not checked in',
-    );
-    expect(screen.queryByText('Fictional Maple')).not.toBeInTheDocument();
-    expect(screen.queryByText('Fictional Moss')).not.toBeInTheDocument();
+    expect(attendanceRow('Jordan Brooks')).toHaveTextContent('Not checked in');
+    expect(screen.queryByText('Maya Chen')).not.toBeInTheDocument();
+    expect(screen.queryByText('Avery Bennett')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /Download|Print|Reverse|Correct/ }),
     ).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Manual member')).not.toBeInTheDocument();
     expect(container.textContent).not.toContain('@example.invalid');
     expect(screen.getByText(/offline booking is unsupported/i)).toBeVisible();
-    expect(screen.getByText(/refresh resets/i)).toBeVisible();
+    expect(
+      screen.getByText(/Manual reconciliation changes attendance only/),
+    ).toBeVisible();
   });
 
   it.each([ids.staff.admin, ids.staff.frontDesk, ids.staff.multiRole])(
@@ -87,7 +87,7 @@ describe('attendance role and privacy projections', () => {
       expect(screen.getByLabelText('Attendance class')).toContainHTML(
         ids.classes.full,
       );
-      expect(attendanceRow('Fictional Maple')).toHaveTextContent('Checked in');
+      expect(attendanceRow('Maya Chen')).toHaveTextContent('Checked in');
       expect(screen.getByLabelText('Manual member')).toBeEnabled();
     },
   );
@@ -122,7 +122,7 @@ describe('attendance role and privacy projections', () => {
       expect(
         screen.queryByLabelText('Attendance class'),
       ).not.toBeInTheDocument();
-      expect(screen.queryByText('Fictional Maple')).not.toBeInTheDocument();
+      expect(screen.queryByText('Maya Chen')).not.toBeInTheDocument();
       expect(store.getSnapshot()).toBe(before);
     },
   );
@@ -143,7 +143,7 @@ describe('attendance role and privacy projections', () => {
     ).not.toBeInTheDocument();
     expect(container.textContent).not.toContain('Staff-only private note');
     expect(screen.queryByText('Printable roster')).not.toBeInTheDocument();
-    expect(screen.queryByText('Fictional Maple')).not.toBeInTheDocument();
+    expect(screen.queryByText('Maya Chen')).not.toBeInTheDocument();
   });
 });
 
@@ -163,7 +163,7 @@ describe('member self-check-in boundaries', () => {
       });
       const before = store.getSnapshot();
       const button = screen.getByRole('button', {
-        name: 'Check in Fictional Cedar',
+        name: 'Check in Jordan Brooks',
       });
       expect(
         screen.getByText(/30 minutes before.*5 minutes after/i),
@@ -211,7 +211,7 @@ describe('member self-check-in boundaries', () => {
       screen.getByText(/10 minutes before.*2 minutes after/i),
     ).toBeVisible();
     await user.click(
-      screen.getByRole('button', { name: 'Check in Fictional Cedar' }),
+      screen.getByRole('button', { name: 'Check in Jordan Brooks' }),
     );
     expect(record(store.getSnapshot().state).currentOutcome).toBe('attended');
   });
@@ -238,7 +238,7 @@ describe('member self-check-in boundaries', () => {
       });
       const before = store.getSnapshot();
       expect(
-        screen.getByRole('button', { name: 'Check in Fictional Cedar' }),
+        screen.getByRole('button', { name: 'Check in Jordan Brooks' }),
       ).toBeDisabled();
       expect(
         screen.getByText(
@@ -261,7 +261,7 @@ describe('staff attendance and history', () => {
     });
     const bookings = store.getSnapshot().state.bookings;
     await user.click(
-      screen.getByRole('button', { name: 'Check in Fictional Cedar' }),
+      screen.getByRole('button', { name: 'Check in Jordan Brooks' }),
     );
     expect(record(store.getSnapshot().state).checkIn.status).toBe('checkedIn');
     await user.selectOptions(
@@ -274,7 +274,7 @@ describe('staff attendance and history', () => {
     expect(after.checkIn.status).toBe('notCheckedIn');
     expect(after.currentOutcome).toBe('booked');
     expect(after.corrections).toHaveLength(2);
-    expect(attendanceRow('Fictional Cedar')).toHaveTextContent(
+    expect(attendanceRow('Jordan Brooks')).toHaveTextContent(
       'Fictional check-in mistake',
     );
     expect(store.getSnapshot().state.bookings).toEqual(bookings);
@@ -287,13 +287,13 @@ describe('staff attendance and history', () => {
     act(() => {
       store.advanceClock('2026-10-05T16:45:00Z');
     });
-    expect(attendanceRow('Fictional Cedar')).toHaveTextContent('No-show');
+    expect(attendanceRow('Jordan Brooks')).toHaveTextContent('No-show');
     expect(
       screen.getByText(/after class end.*do not create or reopen/i),
     ).toBeVisible();
     await user.click(
       screen.getByRole('button', {
-        name: 'Correct to attended for Fictional Cedar',
+        name: 'Correct to attended for Jordan Brooks',
       }),
     );
     const corrected = record(store.getSnapshot().state);
@@ -365,10 +365,8 @@ describe('staff attendance and history', () => {
       screen.getByLabelText('Attendance class'),
       ids.classes.history,
     );
-    expect(attendanceRow('Fictional Willow')).toHaveTextContent('Late cancel');
-    expect(attendanceRow('Fictional Juniper')).toHaveTextContent(
-      'Staff removal',
-    );
+    expect(attendanceRow('Taylor Reed')).toHaveTextContent('Late cancel');
+    expect(attendanceRow('Riley Morgan')).toHaveTextContent('Staff removal');
     const previous = record(
       store.getSnapshot().state,
       ids.attendance.historyCorrected,
@@ -391,7 +389,7 @@ describe('staff attendance and history', () => {
     );
     expect(after.corrections.slice(0, -1)).toEqual(previous.corrections);
     expect(after.currentOutcome).toBe('noShow');
-    expect(attendanceRow('Fictional Birch')).toHaveTextContent(
+    expect(attendanceRow('Sam Patel')).toHaveTextContent(
       'Fictional second review',
     );
   });
@@ -430,10 +428,8 @@ describe('staff attendance and history', () => {
       screen.getByLabelText('Attendance class'),
       ids.classes.history,
     );
-    expect(attendanceRow('Fictional Willow')).toHaveTextContent('Late cancel');
-    expect(attendanceRow('Fictional Juniper')).toHaveTextContent(
-      'Staff removal',
-    );
+    expect(attendanceRow('Taylor Reed')).toHaveTextContent('Late cancel');
+    expect(attendanceRow('Riley Morgan')).toHaveTextContent('Staff removal');
   });
 
   it('rejects a blank reversal reason and keeps the original check-in', async () => {
@@ -464,23 +460,21 @@ describe('manual outage reconciliation and roster artifacts', () => {
       bookings: [],
       attendance: [],
     });
-    expect(container.textContent).not.toContain('Fictional Juniper');
+    expect(container.textContent).not.toContain('Riley Morgan');
     await fill(user, 'Manual member identifier', ids.members.juniper);
     await fill(user, 'Manual entry reason', 'Fictional paper attendance');
     await user.click(
       screen.getByRole('button', { name: 'Record manual attendance' }),
     );
     expect(store.getSnapshot().state.bookings).toEqual([]);
-    expect(attendanceRow('Fictional Juniper')).toHaveTextContent(
-      'Manual outage',
-    );
+    expect(attendanceRow('Riley Morgan')).toHaveTextContent('Manual outage');
     expect(store.getSnapshot().state.attendance[0]).toMatchObject({
       classId: ids.classes.checkIn,
       memberId: ids.members.juniper,
       currentOutcome: 'attended',
       checkIn: { status: 'notCheckedIn' },
     });
-    expect(container.textContent).not.toContain('Fictional Aspen');
+    expect(container.textContent).not.toContain('Casey Park');
   });
 
   it('rejects an unknown manually entered member identifier without mutation or success', async () => {
@@ -548,15 +542,13 @@ describe('manual outage reconciliation and roster artifacts', () => {
       screen.getByLabelText('Attendance class'),
       ids.classes.free,
     );
-    expect(attendanceRow('Fictional Juniper')).toHaveTextContent(
+    expect(attendanceRow('Riley Morgan')).toHaveTextContent(
       'No assigned station',
     );
-    expect(attendanceRow('Fictional Juniper')).toHaveTextContent(
-      'Manual outage',
-    );
+    expect(attendanceRow('Riley Morgan')).toHaveTextContent('Manual outage');
     expect(
       screen.getByText('Printable roster').closest('table'),
-    ).not.toHaveTextContent('Fictional Juniper');
+    ).not.toHaveTextContent('Riley Morgan');
   });
 
   it('reconciles an existing booking, preserves check-in and retains history', async () => {
@@ -675,7 +667,7 @@ describe('manual outage reconciliation and roster artifacts', () => {
     };
 
     await user.click(
-      screen.getByRole('button', { name: 'Check in Fictional Cedar' }),
+      screen.getByRole('button', { name: 'Check in Jordan Brooks' }),
     );
     expect(screen.getByRole('status')).toHaveTextContent(
       'Simulated check-in recorded.',
@@ -758,7 +750,7 @@ describe('manual outage reconciliation and roster artifacts', () => {
     });
     await fill(user, 'Manual entry reason', 'Unreviewed manual entry');
     await user.click(
-      screen.getByRole('button', { name: 'Check in Fictional Cedar' }),
+      screen.getByRole('button', { name: 'Check in Jordan Brooks' }),
     );
     const before = store.getSnapshot();
     await user.click(
@@ -815,8 +807,8 @@ describe('manual outage reconciliation and roster artifacts', () => {
     });
     const table = screen.getByText('Printable roster').closest('table')!;
     expect(within(table).getAllByRole('columnheader')).toHaveLength(2);
-    expect(table).toHaveTextContent('Fictional Cedar');
-    expect(table).toHaveTextContent('Demo West');
+    expect(table).toHaveTextContent('Jordan Brooks');
+    expect(table).toHaveTextContent('Rower 02');
     expect(table.textContent).not.toMatch(
       /@|waiver|Checked in|booked|correction|staff:/i,
     );

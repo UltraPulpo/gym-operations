@@ -15,7 +15,7 @@ import {
   PublicCoachProfile,
 } from './index';
 
-const indigo = 'Fictional Coach Indigo';
+const indigo = 'Alex Rivera';
 
 function coach(state: DemoState, staffId: StaffId = ids.staff.coach) {
   const profile = state.staffAccounts.find(
@@ -146,7 +146,9 @@ describe('Coach profile editing', () => {
       expect(screen.getByRole('status')).toHaveTextContent(
         'Coach profile saved',
       );
-      expect(screen.getByText(/non-operational/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Persona permissions are simulated/),
+      ).toBeInTheDocument();
     },
   );
 
@@ -214,7 +216,7 @@ describe('Coach profile editing', () => {
     expect(screen.queryByText(indigo)).not.toBeInTheDocument();
     expect(screen.queryByRole('form')).not.toBeInTheDocument();
     expect(document.body.innerHTML).not.toContain(
-      'coach-indigo@example.invalid',
+      'alex.rivera@example.invalid',
     );
   });
 
@@ -285,7 +287,7 @@ describe('Coach profile editing', () => {
     expect(screen.queryByRole('form')).not.toBeInTheDocument();
     expect(document.body.innerHTML).not.toContain('Private draft.');
     expect(document.body.innerHTML).not.toContain(
-      'coach-indigo@example.invalid',
+      'alex.rivera@example.invalid',
     );
   });
 });
@@ -296,16 +298,16 @@ describe('Public and staff coach projections', () => {
       actor: { kind: 'member', memberId: ids.members.maple },
     });
     expect(screen.getByRole('heading', { name: indigo })).toBeInTheDocument();
+    expect(screen.getByText('Rowing instructor')).toBeInTheDocument();
     expect(
-      screen.getByText('Illustrative rowing certificate'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('Fictional technique coach for the demonstration.'),
+      screen.getByText(
+        'Technique-focused coaching for confident, efficient rowing.',
+      ),
     ).toBeInTheDocument();
     const history = within(
       screen.getByRole('region', { name: `${indigo} class history` }),
     );
-    expect(history.getByText(/Demo Technique/)).toBeInTheDocument();
+    expect(history.getByText(/Rowing Foundations/)).toBeInTheDocument();
     for (const account of view.store.getSnapshot().state.staffAccounts) {
       expect(view.container.innerHTML).not.toContain(account.identitySubject);
       if (account.coachProfile?.contact.email) {
@@ -324,9 +326,7 @@ describe('Public and staff coach projections', () => {
     const view = renderWithDemoState(<CoachesScreen />, {
       actor: { kind: 'staff', staffId: ids.staff.frontDesk },
     });
-    expect(
-      screen.getByText('coach-indigo@example.invalid'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('alex.rivera@example.invalid')).toBeInTheDocument();
     expect(screen.getAllByText('Staff-only contact')).toHaveLength(2);
     for (const account of view.store.getSnapshot().state.staffAccounts) {
       expect(view.container.innerHTML).not.toContain(account.identitySubject);
@@ -406,12 +406,12 @@ describe('Public and staff coach projections', () => {
       },
     );
     expect(
-      screen.getByRole('heading', { name: 'Demo Technique' }),
+      screen.getByRole('heading', { name: 'Rowing Foundations' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: indigo })).toBeInTheDocument();
     expect(
       screen.getByRole('region', { name: `${indigo} class history` }),
-    ).toHaveTextContent('Demo Technique');
+    ).toHaveTextContent('Rowing Foundations');
     expect(view.container.innerHTML).not.toMatch(
       /example\.invalid|identity:|mailto:|tel:/,
     );
@@ -501,7 +501,7 @@ describe('Public and staff coach projections', () => {
           : account,
       ),
     });
-    expect(screen.getByRole('img')).toHaveTextContent('FC');
+    expect(screen.getByRole('img')).toHaveTextContent('AR');
     expect(
       view.container.querySelector('img, image, [href], [src]'),
     ).toBeNull();

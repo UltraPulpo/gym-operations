@@ -15,6 +15,12 @@ export function DemoShell() {
   const demo = useDemoState();
   const location = useLocation();
   const workspace = useRef<HTMLDivElement>(null);
+  const navigation = useRef<HTMLElement>(null);
+  const navigationToggle = useRef<HTMLButtonElement>(null);
+  const [mobile, setMobile] = useState(
+    () => window.matchMedia?.('(max-width: 50rem)').matches ?? false,
+  );
+  const [navigationOpen, setNavigationOpen] = useState(false);
   const [scenarioChoice, setScenarioChoice] = useState<string>(
     demo.state.scenarioId,
   );
@@ -43,6 +49,29 @@ export function DemoShell() {
   const actorKey = actorId(demo.activeActor);
 
   useEffect(() => {
+    const media = window.matchMedia?.('(max-width: 50rem)');
+    if (!media) return;
+    const change = () => {
+      if (
+        media.matches &&
+        navigation.current?.contains(document.activeElement)
+      ) {
+        workspace.current?.focus();
+      }
+      if (
+        !media.matches &&
+        navigationToggle.current === document.activeElement
+      ) {
+        workspace.current?.focus();
+      }
+      setMobile(media.matches);
+      setNavigationOpen(false);
+    };
+    media.addEventListener('change', change);
+    return () => media.removeEventListener('change', change);
+  }, []);
+
+  useEffect(() => {
     const heading = workspace.current?.querySelector<HTMLElement>('h1, h2');
     if (heading) {
       heading.tabIndex = -1;
@@ -66,12 +95,7 @@ export function DemoShell() {
       action.kind === 'reset'
         ? demo.resetDemo({ confirmed: true })
         : demo.loadScenario(action.scenarioId, { confirmed: true });
-    if (
-      present(
-        result,
-        'Fictional state replaced. No operational records were changed.',
-      )
-    ) {
+    if (present(result, 'Data reset. No operational records were changed.')) {
       setScenarioChoice(
         action.kind === 'reset' ? SCENARIO_IDS.baseline : action.scenarioId,
       );
@@ -97,225 +121,277 @@ export function DemoShell() {
       >
         Skip to demo workspace
       </a>
-      <section className={styles.controls} aria-label="Demo controls">
-        <div className={styles.personaPanel}>
-          <p className={styles.eyebrow}>One active fictional persona</p>
-          <SelectField
-            label="Fictional persona"
-            value={actorKey}
-            hint="Persona selection is not authentication. No credentials are requested; role visibility is not a security boundary."
-            onChange={(event) => {
-              const selected = personas.find(
-                (persona) => actorId(persona.actor) === event.target.value,
-              );
-              if (!selected) {
-                setError(
-                  'DemoUnavailableState: The selected fictional persona is unavailable.',
-                );
-                return;
-              }
-              present(
-                demo.submit({
-                  type: 'selectActor',
-                  payload: { actor: selected.actor },
-                }),
-                'Active fictional persona changed.',
-              );
-            }}
-          >
-            {personas.map((persona) => (
-              <option
-                key={actorId(persona.actor)}
-                value={actorId(persona.actor)}
-              >
-                {persona.label}
-              </option>
-            ))}
-          </SelectField>
-          <p aria-label="Active fictional actor" className={styles.actorBanner}>
-            {currentPersona?.label ?? 'Selected fictional actor unavailable'}
-          </p>
-          {!demo.capabilities.success && (
-            <Alert>{demo.capabilities.error.message}</Alert>
-          )}
-          {scope?.kind === 'all' && (
-            <p>
-              Class action scope: all classes. Capabilities are the union of
-              this account's assigned roles.
-            </p>
-          )}
-          {scope?.kind === 'assigned' && (
-            <p>
-              Coach actions are limited to assigned classes (
-              {scope.classIds.length}). Other class actions are unavailable.
-            </p>
-          )}
-          {demo.activeActor.kind === 'member' && (
-            <p>
-              Member actions apply only to your selected fictional record.
-              Pending/inactive members cannot book or check in; current-waiver
-              and timing rules still apply.
-            </p>
-          )}
-          {demo.activeActor.kind === 'invitation' && (
-            <p>
-              Only the selected invitation can be accepted. Identity
-              verification and signatures are simulated, not legal evidence.
-            </p>
-          )}
-        </div>
-        <div className={styles.scenarioPanel}>
-          <p className={styles.eyebrow}>Replace the entire playground</p>
-          <p>
-            Current scenario:{' '}
-            <strong>{currentScenario?.name ?? 'Unavailable scenario'}</strong>.{' '}
-            {demo.hasUnsavedEdits
-              ? 'Local demo edits present.'
-              : 'Unedited fictional snapshot.'}
-          </p>
-          <SelectField
-            label="Named scenario"
-            value={scenarioChoice}
-            onChange={(event) => setScenarioChoice(event.target.value)}
-          >
-            {demo.scenarios.map((scenario) => (
-              <option key={scenario.scenarioId} value={scenario.scenarioId}>
-                {scenario.name}
-              </option>
-            ))}
-          </SelectField>
-          {selectedScenario ? (
-            <div className={styles.scenarioDetails}>
-              <p>{selectedScenario.description}</p>
-              <p>Scenario clock: {selectedScenario.clockInstant}</p>
-              <p>
-                Scenario timezone: {selectedScenario.timezone} (illustrative)
-              </p>
-              <p>
-                Scenario actor:{' '}
-                {getPersonas(selectedScenario.snapshot).find(
-                  (persona) =>
-                    actorId(persona.actor) ===
-                    actorId(selectedScenario.defaultActor),
-                )?.label ?? 'Unavailable actor'}
-              </p>
-            </div>
-          ) : (
-            <Alert>The requested demo scenario is unavailable.</Alert>
-          )}
-          <div className={styles.actions}>
-            <Button
-              disabled={!selectedScenario}
-              onClick={() => {
-                if (!selectedScenario) return;
-                const action = {
-                  kind: 'scenario',
-                  scenarioId: selectedScenario.scenarioId,
-                } as const;
-                if (demo.hasUnsavedEdits) setReplacement(action);
-                else replaceState(action);
-              }}
-            >
-              Load scenario
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => setReplacement({ kind: 'reset' })}
-            >
-              Reset demo
-            </Button>
-          </div>
-        </div>
-        <div className={styles.clockPanel}>
-          <p className={styles.eyebrow}>
-            Frozen virtual clock / explicit transitions only
-          </p>
-          <p aria-label="Frozen demo clock" className={styles.clock}>
-            <time dateTime={demo.now}>{demo.now}</time>
-          </p>
-          <p>
+      <section aria-label="Workspace tools">
+        <div className={styles.compactBar} aria-label="Workspace summary">
+          <strong>{currentPersona?.label ?? 'Persona unavailable'}</strong>
+          <time dateTime={demo.now}>
             {DateTime.fromISO(demo.now, {
               zone: demo.state.settings.timezone,
-            }).toFormat('ccc, dd LLL yyyy HH:mm:ss ZZZZ')}
-          </p>
-          <p>
-            Demo timezone: {demo.state.settings.timezone} (illustrative; not
-            confirmed gym policy).
-          </p>
-          <p>
-            Forward only. Load a scenario or reset to return to an earlier
-            instant. No background services or email run.
-          </p>
-          <SelectField
-            label="Clock preset"
-            value={preset?.presetId ?? ''}
-            disabled={!demo.clockPresets.success}
-            onChange={(event) => setPresetChoice(event.target.value)}
-          >
-            {demo.clockPresets.success ? (
-              demo.clockPresets.value.map((item) => (
-                <option key={item.presetId} value={item.presetId}>
-                  {item.name}
-                </option>
-              ))
-            ) : (
-              <option value="">Presets unavailable</option>
-            )}
-          </SelectField>
-          {!demo.clockPresets.success && (
-            <Alert>
-              {demo.clockPresets.error.category}:{' '}
-              {demo.clockPresets.error.message}
-            </Alert>
-          )}
-          <div className={styles.actions}>
-            <Button
-              disabled={!preset}
-              onClick={() => {
-                if (preset)
-                  present(
-                    demo.setClockPreset(preset.presetId),
-                    'Frozen clock preset applied. Only local demo transitions occurred.',
-                  );
-              }}
-            >
-              Apply clock preset
-            </Button>
-            {Object.values(DEMO_CLOCK_STEPS).map((step) => (
-              <Button
-                key={step.minutes}
-                variant="secondary"
-                onClick={() =>
-                  present(
-                    demo.advanceClockBy(step.minutes),
-                    'Frozen clock advanced. Only local demo transitions occurred.',
-                  )
-                }
-              >
-                {step.label}
-              </Button>
-            ))}
-          </div>
+            }).toFormat('ccc, LLL d - HH:mm ZZZZ')}
+          </time>
         </div>
+        <details className={styles.controlsDisclosure}>
+          <summary>Demo controls</summary>
+          <section className={styles.controls} aria-label="Demo controls">
+            <div className={styles.personaPanel}>
+              <p className={styles.eyebrow}>Persona</p>
+              <SelectField
+                label="Persona"
+                value={actorKey}
+                hint="Persona selection is not authentication. No credentials are requested; role visibility is not a security boundary."
+                onChange={(event) => {
+                  const selected = personas.find(
+                    (persona) => actorId(persona.actor) === event.target.value,
+                  );
+                  if (!selected) {
+                    setError(
+                      'DemoUnavailableState: The selected fictional persona is unavailable.',
+                    );
+                    return;
+                  }
+                  present(
+                    demo.submit({
+                      type: 'selectActor',
+                      payload: { actor: selected.actor },
+                    }),
+                    'Persona changed.',
+                  );
+                }}
+              >
+                {personas.map((persona) => (
+                  <option
+                    key={actorId(persona.actor)}
+                    value={actorId(persona.actor)}
+                  >
+                    {persona.label}
+                  </option>
+                ))}
+              </SelectField>
+              <p aria-label="Active persona" className={styles.actorBanner}>
+                {currentPersona?.label ??
+                  'Selected fictional actor unavailable'}
+              </p>
+              {!demo.capabilities.success && (
+                <Alert>{demo.capabilities.error.message}</Alert>
+              )}
+              {scope?.kind === 'all' && (
+                <p>
+                  Class action scope: all classes. Capabilities are the union of
+                  this account's assigned roles.
+                </p>
+              )}
+              {scope?.kind === 'assigned' && (
+                <p>
+                  Coach actions are limited to assigned classes (
+                  {scope.classIds.length}). Other class actions are unavailable.
+                </p>
+              )}
+              {demo.activeActor.kind === 'member' && (
+                <p>
+                  Member actions apply only to your selected fictional record.
+                  Pending/inactive members cannot book or check in;
+                  current-waiver and timing rules still apply.
+                </p>
+              )}
+              {demo.activeActor.kind === 'invitation' && (
+                <p>
+                  Only the selected invitation can be accepted. Identity
+                  verification and signatures are simulated, not legal evidence.
+                </p>
+              )}
+            </div>
+            <div className={styles.scenarioPanel}>
+              <p className={styles.eyebrow}>Replace the entire playground</p>
+              <p>
+                Current scenario:{' '}
+                <strong>
+                  {currentScenario?.name ?? 'Unavailable scenario'}
+                </strong>
+                .{' '}
+                {demo.hasUnsavedEdits
+                  ? 'Local demo edits present.'
+                  : 'Unedited fictional snapshot.'}
+              </p>
+              <SelectField
+                label="Named scenario"
+                value={scenarioChoice}
+                onChange={(event) => setScenarioChoice(event.target.value)}
+              >
+                {demo.scenarios.map((scenario) => (
+                  <option key={scenario.scenarioId} value={scenario.scenarioId}>
+                    {scenario.name}
+                  </option>
+                ))}
+              </SelectField>
+              {selectedScenario ? (
+                <div className={styles.scenarioDetails}>
+                  <p>{selectedScenario.description}</p>
+                  <p>Scenario clock: {selectedScenario.clockInstant}</p>
+                  <p>
+                    Scenario timezone: {selectedScenario.timezone}{' '}
+                    (illustrative)
+                  </p>
+                  <p>
+                    Scenario actor:{' '}
+                    {getPersonas(selectedScenario.snapshot).find(
+                      (persona) =>
+                        actorId(persona.actor) ===
+                        actorId(selectedScenario.defaultActor),
+                    )?.label ?? 'Unavailable actor'}
+                  </p>
+                </div>
+              ) : (
+                <Alert>The requested demo scenario is unavailable.</Alert>
+              )}
+              <div className={styles.actions}>
+                <Button
+                  disabled={!selectedScenario}
+                  onClick={() => {
+                    if (!selectedScenario) return;
+                    const action = {
+                      kind: 'scenario',
+                      scenarioId: selectedScenario.scenarioId,
+                    } as const;
+                    if (demo.hasUnsavedEdits) setReplacement(action);
+                    else replaceState(action);
+                  }}
+                >
+                  Load scenario
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => setReplacement({ kind: 'reset' })}
+                >
+                  Reset demo
+                </Button>
+              </div>
+            </div>
+            <div className={styles.clockPanel}>
+              <p className={styles.eyebrow}>
+                Frozen virtual clock / explicit transitions only
+              </p>
+              <p aria-label="Frozen demo clock" className={styles.clock}>
+                <time dateTime={demo.now}>{demo.now}</time>
+              </p>
+              <p>
+                {DateTime.fromISO(demo.now, {
+                  zone: demo.state.settings.timezone,
+                }).toFormat('ccc, dd LLL yyyy HH:mm:ss ZZZZ')}
+              </p>
+              <p>
+                Demo timezone: {demo.state.settings.timezone} (illustrative; not
+                confirmed gym policy).
+              </p>
+              <p>
+                Forward only. Load a scenario or reset to return to an earlier
+                instant. No background services or email run.
+              </p>
+              <SelectField
+                label="Clock preset"
+                value={preset?.presetId ?? ''}
+                disabled={!demo.clockPresets.success}
+                onChange={(event) => setPresetChoice(event.target.value)}
+              >
+                {demo.clockPresets.success ? (
+                  demo.clockPresets.value.map((item) => (
+                    <option key={item.presetId} value={item.presetId}>
+                      {item.name}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">Presets unavailable</option>
+                )}
+              </SelectField>
+              {!demo.clockPresets.success && (
+                <Alert>
+                  {demo.clockPresets.error.category}:{' '}
+                  {demo.clockPresets.error.message}
+                </Alert>
+              )}
+              <div className={styles.actions}>
+                <Button
+                  disabled={!preset}
+                  onClick={() => {
+                    if (preset)
+                      present(
+                        demo.setClockPreset(preset.presetId),
+                        'Frozen clock preset applied. Only local demo transitions occurred.',
+                      );
+                  }}
+                >
+                  Apply clock preset
+                </Button>
+                {Object.values(DEMO_CLOCK_STEPS).map((step) => (
+                  <Button
+                    key={step.minutes}
+                    variant="secondary"
+                    onClick={() =>
+                      present(
+                        demo.advanceClockBy(step.minutes),
+                        'Frozen clock advanced. Only local demo transitions occurred.',
+                      )
+                    }
+                  >
+                    {step.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </section>
+        </details>
       </section>
       {error && <Alert>{error}</Alert>}
       {notice && <Alert tone="info">{notice}</Alert>}
       <div className={styles.workspace}>
-        <nav aria-label="Demo navigation" className={styles.navigation}>
-          <p className={styles.eyebrow}>Workspace</p>
-          <NavLink to={APP_ROUTES.overview} end>
-            Demo overview
-          </NavLink>
-          {visibleRoutes.map((route) => (
-            <NavLink key={route.path} to={route.path}>
-              {route.label}
+        <div
+          className={styles.navigationContainer}
+          role="region"
+          aria-label="Navigation controls"
+        >
+          {mobile && (
+            <Button
+              ref={navigationToggle}
+              variant="secondary"
+              aria-expanded={navigationOpen}
+              aria-controls="workspace-navigation"
+              onClick={() => setNavigationOpen((open) => !open)}
+            >
+              Navigation
+            </Button>
+          )}
+          <nav
+            ref={navigation}
+            id="workspace-navigation"
+            aria-label="Demo navigation"
+            className={styles.navigation}
+            hidden={mobile && !navigationOpen}
+            onClick={(event) => {
+              const link = (event.target as HTMLElement).closest('a');
+              if (link) {
+                setNavigationOpen(false);
+                if (link.hash.slice(1) === location.pathname) {
+                  workspace.current
+                    ?.querySelector<HTMLElement>('h1, h2')
+                    ?.focus();
+                }
+              }
+            }}
+          >
+            <p className={styles.eyebrow}>Workspace</p>
+            <NavLink to={APP_ROUTES.overview} end>
+              Demo overview
             </NavLink>
-          ))}
-          <p className={styles.navHint}>
-            Unavailable routes are hidden. Direct links explain demo access
-            limits.
-          </p>
-        </nav>
+            {visibleRoutes.map((route) => (
+              <NavLink key={route.path} to={route.path}>
+                {route.label}
+              </NavLink>
+            ))}
+            <p className={styles.navHint}>
+              Unavailable routes are hidden. Direct links explain demo access
+              limits.
+            </p>
+          </nav>
+        </div>
         <div
           id="demo-workspace"
           ref={workspace}
@@ -334,9 +410,12 @@ export function DemoShell() {
                   route.available(demo) ? (
                     <>
                       {route.limitation?.(demo) && (
-                        <p className={styles.limitation}>
+                        <section
+                          aria-label="Workspace limitations"
+                          className={styles.limitation}
+                        >
                           {route.limitation(demo)}
-                        </p>
+                        </section>
                       )}
                       <route.Screen />
                     </>
@@ -376,14 +455,12 @@ export function DemoShell() {
         open={replacement !== null}
         title={
           replacement?.kind === 'reset'
-            ? 'Reset fictional demo?'
+            ? 'Reset demo?'
             : 'Replace edited demo state?'
         }
         description="This discards the complete local snapshot, including edits, and replaces its persona and frozen clock. It does not affect any operational records."
         confirmLabel={
-          replacement?.kind === 'reset'
-            ? 'Reset fictional state'
-            : 'Replace demo state'
+          replacement?.kind === 'reset' ? 'Reset data' : 'Replace demo state'
         }
         onCancel={() => setReplacement(null)}
         onConfirm={() => {

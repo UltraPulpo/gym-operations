@@ -536,18 +536,18 @@ describe('Schedule workflows', () => {
 
     expect(
       details.getByRole('img', {
-        name: 'Fictional Coach Indigo generated avatar',
+        name: 'Alex Rivera generated avatar',
       }),
     ).toBeInTheDocument();
     expect(classCard).toHaveTextContent(
-      'Fictional technique coach for the demonstration.',
+      'Technique-focused coaching for confident, efficient rowing.',
     );
-    expect(classCard).toHaveTextContent('Illustrative rowing certificate');
+    expect(classCard).toHaveTextContent('Rowing instructor');
     expect(
       details.getByRole('region', {
-        name: 'Fictional Coach Indigo class history',
+        name: 'Alex Rivera class history',
       }),
-    ).toHaveTextContent('Demo Technique');
+    ).toHaveTextContent('Rowing Foundations');
     expect(classCard.innerHTML).not.toMatch(
       /coach-indigo@example\.invalid|555-0109|identity:/,
     );
@@ -563,9 +563,9 @@ describe('Schedule workflows', () => {
     const details = within(classCard);
 
     expect(classCard).toHaveTextContent('2026-10-05 09:00 PDT - 09:45 PDT');
-    expect(classCard).toHaveTextContent('Coach: Fictional Coach Indigo');
+    expect(classCard).toHaveTextContent('Coach: Alex Rivera');
     const headings = details.getAllByRole('heading', {
-      name: 'Demo Technique',
+      name: 'Rowing Foundations',
     });
     expect(headings).toHaveLength(1);
     expect(headings[0]!.tagName).toBe('H3');
@@ -574,7 +574,7 @@ describe('Schedule workflows', () => {
     );
     expect(
       details.getByRole('img', {
-        name: 'Fictional Coach Indigo generated avatar',
+        name: 'Alex Rivera generated avatar',
       }),
     ).toBeInTheDocument();
     expect(classCard.innerHTML).not.toMatch(
@@ -829,7 +829,7 @@ describe('Schedule workflows', () => {
     for (const item of [a, b])
       expect(card(item.classId).getByText('published')).toBeInTheDocument();
     expect(
-      screen.queryByText(/coach-indigo@example.invalid/),
+      screen.queryByText(/alex.rivera@example.invalid/),
     ).not.toBeInTheDocument();
     changeActor(view, { kind: 'staff', staffId: ids.staff.admin });
     await view.user.selectOptions(
