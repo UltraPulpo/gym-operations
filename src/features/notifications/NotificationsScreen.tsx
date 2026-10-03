@@ -157,8 +157,8 @@ function NotificationWorkspace() {
               : recipient.kind === 'member'
                 ? (members.find(
                     (member) => member.memberId === recipient.memberId,
-                  )?.displayName ?? 'Fictional member')
-                : 'Fictional invitee',
+                  )?.displayName ?? 'Member')
+                : 'Invitee',
         }))
     : [];
   const selected =
@@ -259,13 +259,11 @@ function NotificationWorkspace() {
 
   return (
     <section className={styles.screen} aria-labelledby="notifications-title">
-      <h1 id="notifications-title">Simulated notifications</h1>
+      <h1 id="notifications-title">Notifications</h1>
       <p className={styles.notice}>
-        Fictional, non-operational demonstration only. No email is transmitted
-        and no email or identity provider is contacted. Delivery is
-        deterministic and local, not evidence of delivery. Failure never
-        reverses a committed invitation, booking, promotion, cancellation or
-        class change. State is in memory only; refresh resets the demo.
+        Delivery outcomes are simulated. No email is transmitted and no provider
+        is contacted. Failure never reverses an invitation, booking, promotion,
+        cancellation or class change.
       </p>
       {!capabilities.success ? (
         <Alert>{capabilities.error.message}</Alert>
@@ -309,7 +307,7 @@ function NotificationWorkspace() {
               },
               {
                 key: 'recipient',
-                header: 'Fictional recipient',
+                header: 'Recipient',
                 render: (record) => record.recipientLabel,
               },
               {
@@ -367,7 +365,7 @@ function NotificationWorkspace() {
                 <h2 id="notification-detail-title">Selected notification</h2>
                 <h3>{eventLabels[selected.event.type]}</h3>
                 <p>Notification reference: {selected.notificationId}</p>
-                <p>Fictional recipient: {selected.recipientLabel}</p>
+                <p>Recipient: {selected.recipientLabel}</p>
                 <OperationReferences event={selected.event} />
                 {failedAttempts && failedAttempts.length > 0 && (
                   <Alert title="Retained simulated delivery failure">

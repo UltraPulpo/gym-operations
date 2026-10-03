@@ -164,6 +164,7 @@ function state(overrides: Partial<DemoState> = {}): DemoState {
       },
     ],
     stations: [],
+    retiredStations: [],
     layout: { availability: 'current' },
     classTypes: [],
     weeklyTemplates: [],

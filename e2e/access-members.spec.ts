@@ -1,3 +1,4 @@
+import { openControls } from './workspace';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
@@ -41,20 +42,19 @@ const acceptedMemberId = `member:accept-${ids.invitations.outstanding}`;
 
 async function route(page: Page, path: string) {
   await page.goto(`#${path}`);
+  await openControls(page);
   await noCredentials(page);
 }
 
 async function persona(page: Page, id: string) {
-  await page.getByLabel('Fictional persona', { exact: true }).selectOption(id);
-  await expect(
-    page.getByLabel('Fictional persona', { exact: true }),
-  ).toHaveValue(id);
+  await page.getByLabel('Persona', { exact: true }).selectOption(id);
+  await expect(page.getByLabel('Persona', { exact: true })).toHaveValue(id);
   const label = await page
-    .getByLabel('Fictional persona', { exact: true })
+    .getByLabel('Persona', { exact: true })
     .locator('option:checked')
     .textContent();
-  await expect(page.getByLabel('Active fictional actor')).toHaveText(label!);
-  await expect(page.getByLabel('Active fictional actor')).toHaveCount(1);
+  await expect(page.getByLabel('Active persona')).toHaveText(label!);
+  await expect(page.getByLabel('Active persona')).toHaveCount(1);
 }
 
 async function noCredentials(page: Page) {
@@ -91,7 +91,7 @@ async function unavailable(page: Page, path: string) {
 async function unusableInvitation(page: Page, message: string) {
   await route(page, '/invitations');
   await expect(
-    page.getByRole('heading', { name: 'Simulated invitation acceptance' }),
+    page.getByRole('heading', { name: 'Invitation acceptance' }),
   ).toBeVisible();
   await expect(page.locator('#demo-workspace').getByRole('alert')).toHaveText(
     message,
@@ -126,9 +126,7 @@ async function loadScenario(
     .click();
   await expect(confirmation).toHaveCount(0);
   await expect(page.getByLabel('Named scenario')).toHaveValue(id);
-  await expect(
-    page.getByLabel('Fictional persona', { exact: true }),
-  ).toHaveValue(actor);
+  await expect(page.getByLabel('Persona', { exact: true })).toHaveValue(actor);
   await expect(page.getByLabel('Frozen demo clock')).toHaveText(now);
   await expect(
     page.getByText('Unedited fictional snapshot.', { exact: false }),
@@ -187,7 +185,7 @@ async function accept(page: Page, status: 'active' | 'pending', version = 2) {
   ).toBeVisible();
   await route(page, '/waivers');
   const signatures = page.getByRole('table', {
-    name: 'Fictional signature history',
+    name: 'Signature history',
   });
   await expect(signatures.getByRole('row')).toHaveCount(2);
   await expect(signatures).toContainText(`Version ${version}`);
@@ -211,21 +209,20 @@ test.beforeEach(async ({ page, baseURL }) => {
     }
   });
   await page.goto(`${baseURL}#/`);
+  await openControls(page);
   await page.getByRole('button', { name: 'Reset demo', exact: true }).click();
   const confirmation = page.getByRole('alertdialog', {
-    name: 'Reset fictional demo?',
+    name: 'Reset demo?',
   });
   await expect(confirmation).toBeVisible();
-  await confirmation
-    .getByRole('button', { name: 'Reset fictional state' })
-    .click();
+  await confirmation.getByRole('button', { name: 'Reset data' }).click();
   await expect(confirmation).toHaveCount(0);
   await expect(page.getByLabel('Named scenario')).toHaveValue(
     SCENARIO_IDS.baseline,
   );
-  await expect(
-    page.getByLabel('Fictional persona', { exact: true }),
-  ).toHaveValue(ids.staff.admin);
+  await expect(page.getByLabel('Persona', { exact: true })).toHaveValue(
+    ids.staff.admin,
+  );
   await expect(page.getByLabel('Frozen demo clock')).toHaveText(
     '2026-10-05T15:45:00Z',
   );
@@ -233,7 +230,7 @@ test.beforeEach(async ({ page, baseURL }) => {
     page.getByText('Unedited fictional snapshot.', { exact: false }),
   ).toBeVisible();
   await expect(
-    page.getByText('SIMULATED DEMO - NOT FOR OPERATIONS', { exact: true }),
+    page.getByText('Demo · resets on refresh', { exact: true }),
   ).toBeVisible();
 });
 
@@ -255,7 +252,7 @@ test('Admin creates, edits and deactivates fictional staff through visible contr
   ).toBeEnabled();
   await route(page, '/settings');
   await expect(
-    page.getByRole('heading', { name: 'Illustrative Admin settings' }),
+    page.getByRole('heading', { name: 'Admin settings' }),
   ).toBeVisible();
   await route(page, '/staff');
   await page
@@ -266,7 +263,7 @@ test('Admin creates, edits and deactivates fictional staff through visible contr
     .getByLabel('Staff ID', { exact: true })
     .fill('staff:browser-rowan');
   await editor
-    .getByLabel('Fictional identity subject')
+    .getByLabel('Simulated identity subject')
     .fill('identity:browser-rowan');
   await editor.getByLabel('Front Desk role').check();
   await editor.getByLabel('Coach role').check();
@@ -279,7 +276,7 @@ test('Admin creates, edits and deactivates fictional staff through visible contr
     page.getByRole('status').filter({ hasText: 'Staff account created' }),
   ).toBeVisible();
   const row = page
-    .getByRole('table', { name: 'Fictional staff accounts' })
+    .getByRole('table', { name: 'Staff accounts' })
     .getByRole('row')
     .filter({ hasText: 'staff:browser-rowan' });
   await expect(row).toContainText('Front Desk, Coach');
@@ -334,9 +331,9 @@ test('Front Desk manages members and all rosters but cannot edit schedule or Adm
   await page.getByLabel('Attendance class').selectOption(ids.classes.full);
   await expect(
     page.getByRole('table', { name: 'Class attendance roster' }),
-  ).toContainText('Fictional Maple');
+  ).toContainText('Maya Chen');
   await expect(
-    page.getByRole('button', { name: 'Check in Fictional Cedar', exact: true }),
+    page.getByRole('button', { name: 'Check in Jordan Brooks', exact: true }),
   ).toBeEnabled();
   await route(page, '/bookings');
   await page
@@ -364,7 +361,7 @@ test('Front Desk manages members and all rosters but cannot edit schedule or Adm
   await expect(
     page.getByRole('button', { name: /Publish version|Create draft/ }),
   ).toHaveCount(0);
-  await expect(page.getByLabel('Fictional typed name')).toHaveCount(0);
+  await expect(page.getByLabel('Typed name')).toHaveCount(0);
   await route(page, '/coaches');
   await expect(
     page.getByRole('button', { name: 'Save coach profile' }),
@@ -397,7 +394,7 @@ test('Coach can act only on assigned classes and edit only their own biography a
   ).toHaveCount(0);
   await classes.selectOption(ids.classes.checkIn);
   await page
-    .getByRole('button', { name: 'Check in Fictional Cedar', exact: true })
+    .getByRole('button', { name: 'Check in Jordan Brooks', exact: true })
     .click();
   await expect(
     page
@@ -408,7 +405,7 @@ test('Coach can act only on assigned classes and edit only their own biography a
     page
       .getByRole('table', { name: 'Class attendance roster' })
       .getByRole('row')
-      .filter({ hasText: 'Fictional Cedar' }),
+      .filter({ hasText: 'Jordan Brooks' }),
   ).toContainText('Checked in at 2026-10-05T15:45:00Z');
   await route(page, '/bookings');
   await expect(
@@ -420,10 +417,10 @@ test('Coach can act only on assigned classes and edit only their own biography a
     page.getByRole('region', { name: 'Staff booking controls' }),
   ).toBeVisible();
   await route(page, '/coaches');
-  const own = page.getByRole('form', { name: 'Edit Fictional Coach Indigo' });
+  const own = page.getByRole('form', { name: 'Edit Alex Rivera' });
   await expect(own).toBeVisible();
   await expect(
-    page.getByRole('form', { name: 'Edit Fictional Coach Coral' }),
+    page.getByRole('form', { name: 'Edit Morgan Ellis' }),
   ).toHaveCount(0);
   await expect(page.getByLabel('Coach name')).toHaveCount(0);
   await expect(page.getByLabel('Staff email')).toHaveCount(0);
@@ -456,8 +453,8 @@ test('one multi-role account combines Front Desk and Coach capabilities without 
   page,
 }) => {
   await persona(page, ids.staff.multiRole);
-  await expect(page.getByLabel('Active fictional actor')).toHaveText(
-    'Fictional Coach Coral - Front Desk + Coach',
+  await expect(page.getByLabel('Active persona')).toHaveText(
+    'Morgan Ellis - Front Desk + Coach',
   );
   await expect(
     page.getByText('Class action scope: all classes.', { exact: false }),
@@ -469,16 +466,16 @@ test('one multi-role account combines Front Desk and Coach capabilities without 
   await route(page, '/attendance');
   await page.getByLabel('Attendance class').selectOption(ids.classes.checkIn);
   await page
-    .getByRole('button', { name: 'Check in Fictional Cedar', exact: true })
+    .getByRole('button', { name: 'Check in Jordan Brooks', exact: true })
     .click();
   await expect(
     page
       .getByRole('table', { name: 'Class attendance roster' })
       .getByRole('row')
-      .filter({ hasText: 'Fictional Cedar' }),
+      .filter({ hasText: 'Jordan Brooks' }),
   ).toContainText('Checked in at');
   await route(page, '/coaches');
-  const own = page.getByRole('form', { name: 'Edit Fictional Coach Coral' });
+  const own = page.getByRole('form', { name: 'Edit Morgan Ellis' });
   await own
     .getByLabel('Biography')
     .fill('Fictional Coral multi-role biography.');
@@ -487,7 +484,7 @@ test('one multi-role account combines Front Desk and Coach capabilities without 
     page.getByRole('status').filter({ hasText: 'Coach profile saved' }),
   ).toBeVisible();
   await expect(
-    page.getByRole('form', { name: 'Edit Fictional Coach Indigo' }),
+    page.getByRole('form', { name: 'Edit Alex Rivera' }),
   ).toHaveCount(0);
   await route(page, '/schedule');
   await expect(
@@ -500,12 +497,10 @@ test('switching personas replaces rather than accumulates permissions and inacti
   page,
 }) => {
   const nav = page.getByRole('navigation', { name: 'Demo navigation' });
-  await expect(
-    page.getByLabel('Fictional persona', { exact: true }),
-  ).toHaveCount(1);
-  await expect(
-    page.getByLabel('Fictional persona', { exact: true }),
-  ).not.toHaveAttribute('multiple');
+  await expect(page.getByLabel('Persona', { exact: true })).toHaveCount(1);
+  await expect(page.getByLabel('Persona', { exact: true })).not.toHaveAttribute(
+    'multiple',
+  );
   await persona(page, ids.staff.multiRole);
   await expect(
     nav.getByRole('link', { name: 'Members', exact: true }),
@@ -543,7 +538,7 @@ test('switching personas replaces rather than accumulates permissions and inacti
   await persona(page, ids.members.cedar);
   await route(page, '/members');
   await expect(
-    page.getByRole('heading', { name: 'Your fictional membership' }),
+    page.getByRole('heading', { name: 'Your membership' }),
   ).toBeVisible();
   await expect(page.getByRole('button', { name: 'Edit profile' })).toHaveCount(
     0,
@@ -567,7 +562,7 @@ test('Front Desk creates, resends and revokes invitations with renewed expiry an
 }) => {
   await persona(page, ids.staff.frontDesk);
   await route(page, '/members');
-  const table = page.getByRole('table', { name: 'Fictional invitations' });
+  const table = page.getByRole('table', { name: 'Invitations' });
   const originalRows = await table.getByRole('row').count();
   await page
     .getByLabel('Invitation email')
@@ -580,7 +575,7 @@ test('Front Desk creates, resends and revokes invitations with renewed expiry an
   await expect(original).toContainText('2026-10-12T15:45:00Z');
   await expect(table.getByRole('row')).toHaveCount(originalRows + 1);
   const originalId = await page
-    .getByLabel('Fictional persona', { exact: true })
+    .getByLabel('Persona', { exact: true })
     .getByRole('option')
     .filter({ hasText: /rowan-browser@example.invalid.*outstanding/ })
     .getAttribute('value');
@@ -604,7 +599,7 @@ test('Front Desk creates, resends and revokes invitations with renewed expiry an
     ),
   ).toHaveCount(2);
   const replacementId = await page
-    .getByLabel('Fictional persona', { exact: true })
+    .getByLabel('Persona', { exact: true })
     .getByRole('option')
     .filter({ hasText: /rowan-browser@example.invalid.*outstanding/ })
     .getAttribute('value');
@@ -638,12 +633,12 @@ test('a user-created invitation becomes unusable at its exact expiry without con
     .fill('expiry-browser@example.invalid');
   await page.getByRole('button', { name: 'Create invitation' }).click();
   const row = page
-    .getByRole('table', { name: 'Fictional invitations' })
+    .getByRole('table', { name: 'Invitations' })
     .getByRole('row')
     .filter({ hasText: 'expiry-browser@example.invalid' });
   await expect(row).toContainText('2026-10-12T15:45:00Z');
   const invitationId = await page
-    .getByLabel('Fictional persona', { exact: true })
+    .getByLabel('Persona', { exact: true })
     .getByRole('option')
     .filter({ hasText: 'expiry-browser@example.invalid' })
     .getAttribute('value');
@@ -666,7 +661,7 @@ test('a user-created invitation becomes unusable at its exact expiry without con
   await persona(page, ids.staff.frontDesk);
   await route(page, '/members');
   await expect(
-    page.getByRole('table', { name: 'Fictional gym members' }).getByRole('row'),
+    page.getByRole('table', { name: 'Gym members' }).getByRole('row'),
   ).toHaveCount(9);
   await expect(
     page.getByText('Active members: 6 / 8.', { exact: false }),
@@ -677,16 +672,16 @@ for (const email of [
   '',
   'not-an-email',
   'INVITEE@example.invalid',
-  'MAPLE@example.invalid',
+  'MAYA.CHEN@example.invalid',
 ]) {
   test(`invalid or duplicate invitation is rejected without a new record: ${email || 'blank'}`, async ({
     page,
   }) => {
     await route(page, '/members');
     const invitations = page.getByRole('table', {
-      name: 'Fictional invitations',
+      name: 'Invitations',
     });
-    const members = page.getByRole('table', { name: 'Fictional gym members' });
+    const members = page.getByRole('table', { name: 'Gym members' });
     const before = await invitations.textContent();
     const memberBefore = await members.textContent();
     await page.getByLabel('Invitation email').fill(email);
@@ -747,11 +742,11 @@ test('incomplete acceptance preserves the invitation until display name, adult a
   await persona(page, ids.staff.frontDesk);
   await route(page, '/members');
   await expect(
-    page.getByRole('table', { name: 'Fictional gym members' }).getByRole('row'),
+    page.getByRole('table', { name: 'Gym members' }).getByRole('row'),
   ).toHaveCount(9);
   await expect(
     page
-      .getByRole('table', { name: 'Fictional invitations' })
+      .getByRole('table', { name: 'Invitations' })
       .getByRole('row')
       .filter({ hasText: 'invitee@example.invalid' }),
   ).toContainText('outstanding');
@@ -762,7 +757,7 @@ test('incomplete acceptance preserves the invitation until display name, adult a
   await route(page, '/members');
   await expect(
     page
-      .getByRole('table', { name: 'Fictional invitations' })
+      .getByRole('table', { name: 'Invitations' })
       .getByRole('row')
       .filter({ hasText: 'invitee@example.invalid' }),
   ).toContainText('accepted');
@@ -804,13 +799,11 @@ for (const outcome of ['rejected', 'mismatched'] as const) {
     await persona(page, ids.staff.frontDesk);
     await route(page, '/members');
     await expect(
-      page
-        .getByRole('table', { name: 'Fictional gym members' })
-        .getByRole('row'),
+      page.getByRole('table', { name: 'Gym members' }).getByRole('row'),
     ).toHaveCount(9);
     await expect(
       page
-        .getByRole('table', { name: 'Fictional invitations' })
+        .getByRole('table', { name: 'Invitations' })
         .getByRole('row')
         .filter({ hasText: 'invitee@example.invalid' }),
     ).toContainText('outstanding');
@@ -846,9 +839,7 @@ for (const [invitation, message] of [
     await persona(page, ids.staff.frontDesk);
     await route(page, '/members');
     await expect(
-      page
-        .getByRole('table', { name: 'Fictional gym members' })
-        .getByRole('row'),
+      page.getByRole('table', { name: 'Gym members' }).getByRole('row'),
     ).toHaveCount(9);
   });
 }
@@ -885,7 +876,7 @@ test('cap-full acceptance records a pending signature but forbids booking and ch
   ).toHaveCount(0);
   await persona(page, ids.staff.frontDesk);
   await route(page, '/members');
-  const members = page.getByRole('table', { name: 'Fictional gym members' });
+  const members = page.getByRole('table', { name: 'Gym members' });
   const rowan = members.getByRole('row').filter({ hasText: 'Fictional Rowan' });
   await rowan.getByRole('button', { name: 'Activate', exact: true }).click();
   await expect(
@@ -896,7 +887,7 @@ test('cap-full acceptance records a pending signature but forbids booking and ch
   await expect(rowan).toContainText('pending');
   await members
     .getByRole('row')
-    .filter({ hasText: 'Fictional Maple' })
+    .filter({ hasText: 'Maya Chen' })
     .getByRole('button', { name: 'Deactivate', exact: true })
     .click();
   await rowan.getByRole('button', { name: 'Activate', exact: true }).click();
@@ -927,7 +918,7 @@ test('profile correction preserves stable persona, invitation, signatures, booki
   await route(page, '/waivers');
   await page.getByLabel('Member to inspect').selectOption(ids.members.maple);
   const signatureBefore = await page
-    .getByRole('table', { name: 'Fictional signature history' })
+    .getByRole('table', { name: 'Signature history' })
     .textContent();
   const bookingsBefore = await page
     .getByRole('table', { name: 'Existing demo bookings' })
@@ -935,7 +926,7 @@ test('profile correction preserves stable persona, invitation, signatures, booki
   await route(page, '/attendance');
   await page.getByLabel('Attendance class').selectOption(ids.classes.history);
   await page.getByLabel('Attendance record', { exact: true }).selectOption({
-    label: 'Fictional Maple',
+    label: 'Maya Chen',
   });
   await page.getByLabel('Corrected outcome').selectOption('noShow');
   await page
@@ -947,25 +938,25 @@ test('profile correction preserves stable persona, invitation, signatures, booki
   const mapleAttendance = page
     .getByRole('table', { name: 'Class attendance roster' })
     .getByRole('row')
-    .filter({ hasText: 'Fictional Maple' });
+    .filter({ hasText: 'Maya Chen' });
   await expect(mapleAttendance).toContainText(
     'Attended to No-show - Fictional browser profile-history marker.',
   );
   const attendanceBefore = await mapleAttendance.textContent();
   await route(page, '/members');
   const invitationsBefore = await page
-    .getByRole('table', { name: 'Fictional invitations' })
+    .getByRole('table', { name: 'Invitations' })
     .textContent();
   await page
-    .getByRole('table', { name: 'Fictional gym members' })
+    .getByRole('table', { name: 'Gym members' })
     .getByRole('row')
-    .filter({ hasText: 'Fictional Maple' })
+    .filter({ hasText: 'Maya Chen' })
     .getByRole('button', { name: 'Edit profile' })
     .click();
   await expect(
     page.getByText(`Stable member ID: ${ids.members.maple}`, { exact: true }),
   ).toBeVisible();
-  await page.getByLabel('Member display name').fill('Fictional Maple Revised');
+  await page.getByLabel('Member display name').fill('Maya Chen Revised');
   await page
     .getByLabel('Verified profile email')
     .fill('maple-revised@example.invalid');
@@ -979,13 +970,13 @@ test('profile correction preserves stable persona, invitation, signatures, booki
         'Stable member ID, identity association, and linked history retained.',
     }),
   ).toBeVisible();
-  await expect(
-    page.getByRole('table', { name: 'Fictional invitations' }),
-  ).toHaveText(invitationsBefore!);
+  await expect(page.getByRole('table', { name: 'Invitations' })).toHaveText(
+    invitationsBefore!,
+  );
   await route(page, '/waivers');
   await page.getByLabel('Member to inspect').selectOption(ids.members.maple);
   await expect(
-    page.getByRole('table', { name: 'Fictional signature history' }),
+    page.getByRole('table', { name: 'Signature history' }),
   ).toHaveText(signatureBefore!);
   await expect(
     page.getByRole('table', { name: 'Existing demo bookings' }),
@@ -993,20 +984,20 @@ test('profile correction preserves stable persona, invitation, signatures, booki
   await route(page, '/attendance');
   await page.getByLabel('Attendance class').selectOption(ids.classes.history);
   await expect(mapleAttendance).toHaveText(
-    attendanceBefore!.replaceAll('Fictional Maple', 'Fictional Maple Revised'),
+    attendanceBefore!.replaceAll('Maya Chen', 'Maya Chen Revised'),
   );
   await persona(page, ids.members.maple);
   await route(page, '/members');
   await expect(
     page.getByText(
-      'Fictional Maple Revised; maple-revised@example.invalid; status: active',
+      'Maya Chen Revised; maple-revised@example.invalid; status: active',
     ),
   ).toBeVisible();
   await route(page, '/attendance');
   await page.getByLabel('Attendance class').selectOption(ids.classes.checkIn);
   await expect(
     page.getByRole('button', {
-      name: 'Check in Fictional Maple Revised',
+      name: 'Check in Maya Chen Revised',
       exact: true,
     }),
   ).toBeDisabled();
@@ -1020,24 +1011,26 @@ test('duplicate active profile email is rejected without changing the stable mem
 }) => {
   await persona(page, ids.staff.frontDesk);
   await route(page, '/members');
-  const members = page.getByRole('table', { name: 'Fictional gym members' });
+  const members = page.getByRole('table', { name: 'Gym members' });
   const before = await members.textContent();
   const invitations = page.getByRole('table', {
-    name: 'Fictional invitations',
+    name: 'Invitations',
   });
   const invitationsBefore = await invitations.textContent();
   await members
     .getByRole('row')
-    .filter({ hasText: 'Fictional Cedar' })
+    .filter({ hasText: 'Jordan Brooks' })
     .getByRole('button', { name: 'Edit profile' })
     .click();
-  await page.getByLabel('Verified profile email').fill('MAPLE@example.invalid');
+  await page
+    .getByLabel('Verified profile email')
+    .fill('MAYA.CHEN@example.invalid');
   await page.getByRole('button', { name: 'Save profile' }).click();
   await expect(
     page.locator('div[role="alert"]').filter({ hasText: /already|duplicate/i }),
   ).toBeVisible();
   await expect(page.getByLabel('Verified profile email')).toHaveValue(
-    'MAPLE@example.invalid',
+    'MAYA.CHEN@example.invalid',
   );
   await expect(
     page.getByText(`Stable member ID: ${ids.members.cedar}`, { exact: true }),
@@ -1050,7 +1043,9 @@ test('duplicate active profile email is rejected without changing the stable mem
   await persona(page, ids.members.cedar);
   await route(page, '/members');
   await expect(
-    page.getByText('Fictional Cedar; cedar@example.invalid; status: active'),
+    page.getByText(
+      'Jordan Brooks; jordan.brooks@example.invalid; status: active',
+    ),
   ).toBeVisible();
   await expect(
     page.getByText('Waiver: current', { exact: true }),
@@ -1067,9 +1062,9 @@ test('denying adult eligibility deactivates a member without cancelling bookings
   const before = await existing.textContent();
   await route(page, '/members');
   const row = page
-    .getByRole('table', { name: 'Fictional gym members' })
+    .getByRole('table', { name: 'Gym members' })
     .getByRole('row')
-    .filter({ hasText: 'Fictional Cedar' });
+    .filter({ hasText: 'Jordan Brooks' });
   await row.getByRole('button', { name: 'Edit profile' }).click();
   await page.getByLabel('Adult eligibility correction').selectOption('denied');
   await page.getByRole('button', { name: 'Save profile' }).click();
@@ -1092,7 +1087,7 @@ test('denying adult eligibility deactivates a member without cancelling bookings
   await route(page, '/attendance');
   await page.getByLabel('Attendance class').selectOption(ids.classes.checkIn);
   await expect(
-    page.getByRole('button', { name: 'Check in Fictional Cedar', exact: true }),
+    page.getByRole('button', { name: 'Check in Jordan Brooks', exact: true }),
   ).toBeDisabled();
   await expect(
     page.getByRole('table', { name: 'Class attendance roster' }),
@@ -1119,7 +1114,7 @@ test('denying adult eligibility deactivates a member without cancelling bookings
   await route(page, '/attendance');
   await page.getByLabel('Attendance class').selectOption(ids.classes.checkIn);
   await page
-    .getByRole('button', { name: 'Check in Fictional Cedar', exact: true })
+    .getByRole('button', { name: 'Check in Jordan Brooks', exact: true })
     .click();
   await expect(
     page.getByRole('table', { name: 'Class attendance roster' }),
@@ -1134,19 +1129,19 @@ test('invitation acceptance signs the newly published current waiver, not the pr
     .getByRole('button', { name: 'Publish version 3', exact: true })
     .click();
   await page
-    .getByRole('alertdialog', { name: 'Publish fictional waiver?' })
-    .getByRole('button', { name: 'Publish fictional version', exact: true })
+    .getByRole('alertdialog', { name: 'Publish waiver?' })
+    .getByRole('button', { name: 'Publish version', exact: true })
     .click();
   await acceptance(page, 3);
   await expect(
-    page.getByRole('region', { name: 'Current fictional waiver' }),
+    page.getByRole('region', { name: 'Current waiver' }),
   ).toContainText(
     'Demonstration only: fictional draft waiver marker, not legal text.',
   );
   await fillAcceptance(page);
   await accept(page, 'active', 3);
   const history = page.getByRole('table', {
-    name: 'Fictional signature history',
+    name: 'Signature history',
   });
   await expect(history).not.toContainText('Version 2');
   await expect(history).toContainText('Current');
@@ -1159,26 +1154,24 @@ test('publishing a waiver preserves bookings and old signatures, blocks new book
   await route(page, '/waivers');
   await page.getByLabel('Member to inspect').selectOption(ids.members.cedar);
   const history = page.getByRole('table', {
-    name: 'Fictional signature history',
+    name: 'Signature history',
   });
   const existing = page.getByRole('table', { name: 'Existing demo bookings' });
   const signatureBefore = await history.textContent();
   const bookingsBefore = await existing.textContent();
   await page.getByLabel('Version number').fill('4');
   await page
-    .getByLabel('Fictional waiver text')
+    .getByLabel('Waiver text')
     .fill('Fictional browser version four. Non-legal simulation only.');
   await page.getByRole('button', { name: 'Create draft', exact: true }).click();
   await expect(
-    page
-      .getByRole('status')
-      .filter({ hasText: 'Created fictional draft version 4.' }),
+    page.getByRole('status').filter({ hasText: 'Created draft version 4.' }),
   ).toBeVisible();
   await page
     .getByRole('button', { name: 'Publish version 4', exact: true })
     .click();
   const publication = page.getByRole('alertdialog', {
-    name: 'Publish fictional waiver?',
+    name: 'Publish waiver?',
   });
   await expect(publication).toContainText(
     'Existing bookings and signatures remain.',
@@ -1188,7 +1181,7 @@ test('publishing a waiver preserves bookings and old signatures, blocks new book
     .click();
   await expect(
     page
-      .getByRole('region', { name: 'Current fictional waiver' })
+      .getByRole('region', { name: 'Current waiver' })
       .getByRole('heading', { name: 'Version 2' }),
   ).toBeVisible();
   await expect(history).toHaveText(signatureBefore!);
@@ -1196,11 +1189,11 @@ test('publishing a waiver preserves bookings and old signatures, blocks new book
     .getByRole('button', { name: 'Publish version 4', exact: true })
     .click();
   await publication
-    .getByRole('button', { name: 'Publish fictional version', exact: true })
+    .getByRole('button', { name: 'Publish version', exact: true })
     .click();
   await expect(
     page
-      .getByRole('region', { name: 'Current fictional waiver' })
+      .getByRole('region', { name: 'Current waiver' })
       .getByRole('heading', { name: 'Version 4' }),
   ).toBeVisible();
   await expect(existing).toHaveText(bookingsBefore!);
@@ -1225,41 +1218,39 @@ test('publishing a waiver preserves bookings and old signatures, blocks new book
   await route(page, '/attendance');
   await page.getByLabel('Attendance class').selectOption(ids.classes.checkIn);
   await expect(
-    page.getByRole('button', { name: 'Check in Fictional Cedar', exact: true }),
+    page.getByRole('button', { name: 'Check in Jordan Brooks', exact: true }),
   ).toBeDisabled();
   await expect(
     page.getByRole('table', { name: 'Class attendance roster' }),
   ).toContainText('Not checked in');
   await route(page, '/waivers');
   const memberBookings = bookingsBefore!
-    .replace('Demo Technique (class:demo-history)', 'class:demo-history')
-    .replace('Demo Endurance (class:demo-cancelled)', 'class:demo-cancelled');
+    .replace('Rowing Foundations (class:demo-history)', 'class:demo-history')
+    .replace('Endurance Row (class:demo-cancelled)', 'class:demo-cancelled');
   await expect(existing).toHaveText(memberBookings);
   await page
-    .getByRole('button', { name: 'Sign current fictional waiver', exact: true })
+    .getByRole('button', { name: 'Sign current waiver', exact: true })
     .click();
-  await expect(page.getByLabel('Fictional typed name')).toHaveAttribute(
+  await expect(page.getByLabel('Typed name')).toHaveAttribute(
     'aria-invalid',
     'true',
   );
   await expect(page.getByRole('alertdialog')).toHaveCount(0);
+  await page.getByLabel('Typed name').fill('Jordan Brooks New Signature');
   await page
-    .getByLabel('Fictional typed name')
-    .fill('Fictional Cedar New Signature');
-  await page
-    .getByRole('button', { name: 'Sign current fictional waiver', exact: true })
+    .getByRole('button', { name: 'Sign current waiver', exact: true })
     .click();
   const signature = page.getByRole('alertdialog', {
-    name: 'Record fictional signature?',
+    name: 'Record signature?',
   });
   await expect(signature).toContainText('2026-10-05T15:45:00Z');
   await signature.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(history.getByRole('row')).toHaveCount(3);
-  await expect(page.getByLabel('Fictional typed name')).toHaveValue(
-    'Fictional Cedar New Signature',
+  await expect(page.getByLabel('Typed name')).toHaveValue(
+    'Jordan Brooks New Signature',
   );
   await page
-    .getByRole('button', { name: 'Sign current fictional waiver', exact: true })
+    .getByRole('button', { name: 'Sign current waiver', exact: true })
     .click();
   await signature
     .getByRole('button', { name: 'Record simulated signature', exact: true })
@@ -1271,7 +1262,7 @@ test('publishing a waiver preserves bookings and old signatures, blocks new book
   await expect(history).toContainText('Version 1');
   await expect(history).toContainText('Version 2');
   await expect(history).toContainText('Version 4');
-  await expect(history).toContainText('Fictional Cedar New Signature');
+  await expect(history).toContainText('Jordan Brooks New Signature');
   await expect(existing).toHaveText(memberBookings);
   await route(page, '/bookings');
   await page
@@ -1289,7 +1280,7 @@ test('publishing a waiver preserves bookings and old signatures, blocks new book
   await route(page, '/attendance');
   await page.getByLabel('Attendance class').selectOption(ids.classes.checkIn);
   await page
-    .getByRole('button', { name: 'Check in Fictional Cedar', exact: true })
+    .getByRole('button', { name: 'Check in Jordan Brooks', exact: true })
     .click();
   await expect(
     page.getByRole('table', { name: 'Class attendance roster' }),

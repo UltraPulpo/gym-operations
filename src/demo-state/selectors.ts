@@ -25,6 +25,7 @@ import type {
   ScheduledClass,
   StaffAccount,
   StaffId,
+  StationId,
   WaitlistEntry,
   WaiverCompliance,
 } from '../domain';
@@ -75,17 +76,25 @@ function hasScheduleVisibility(
     : undefined;
 }
 
+function stationLabel(
+  state: DemoState,
+  stationId: StationId,
+): string | undefined {
+  const station = state.stations.find((item) => item.stationId === stationId);
+  if (station) return station.label;
+  const retired = state.retiredStations.find(
+    (item) => item.stationId === stationId,
+  );
+  return retired ? `${retired.label} (removed)` : undefined;
+}
+
 function byStationAndMember(
   state: DemoState,
   left: Booking,
   right: Booking,
 ): number {
-  const leftStation =
-    state.stations.find((station) => station.stationId === left.stationId)
-      ?.label ?? '';
-  const rightStation =
-    state.stations.find((station) => station.stationId === right.stationId)
-      ?.label ?? '';
+  const leftStation = stationLabel(state, left.stationId) ?? '';
+  const rightStation = stationLabel(state, right.stationId) ?? '';
   const stationOrder = leftStation.localeCompare(rightStation);
   if (stationOrder !== 0) return stationOrder;
   const leftMember =
@@ -412,15 +421,11 @@ export function selectClassAttendance(
       const leftStation =
         leftBooking === undefined
           ? ''
-          : (state.stations.find(
-              (station) => station.stationId === leftBooking.stationId,
-            )?.label ?? '');
+          : (stationLabel(state, leftBooking.stationId) ?? '');
       const rightStation =
         rightBooking === undefined
           ? ''
-          : (state.stations.find(
-              (station) => station.stationId === rightBooking.stationId,
-            )?.label ?? '');
+          : (stationLabel(state, rightBooking.stationId) ?? '');
       const stationOrder = leftStation.localeCompare(rightStation);
       if (stationOrder !== 0) return stationOrder;
       const leftMember =
@@ -452,13 +457,11 @@ export function selectPrintableRoster(
           const member = state.members.find(
             (record) => record.memberId === booking.memberId,
           );
-          const station = state.stations.find(
-            (record) => record.stationId === booking.stationId,
-          );
-          return member && station
+          const label = stationLabel(state, booking.stationId);
+          return member && label
             ? {
                 memberDisplayName: member.displayName,
-                stationLabel: station.label,
+                stationLabel: label,
               }
             : undefined;
         })

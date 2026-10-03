@@ -18,10 +18,15 @@ export function actorId(actor: DemoActor): string {
 }
 
 export function getPersonas(state: DemoState) {
+  const staffNames: Record<string, string> = {
+    'staff:demo-admin': 'Chris Sullivan',
+    'staff:demo-front-desk': 'Dana Lee',
+    'staff:demo-inactive': 'Robin Hayes',
+  };
   return [
     ...state.staffAccounts.map((staff) => ({
       actor: { kind: 'staff', staffId: staff.staffId } satisfies DemoActor,
-      label: `${staff.coachProfile?.displayName ?? `Fictional ${staff.staffId.slice(6)}`} - ${staff.assignedRoles.map((role) => ROLE_LABELS[role]).join(' + ')}${staff.active ? '' : ' (inactive)'}`,
+      label: `${staff.coachProfile?.displayName ?? staffNames[staff.staffId] ?? staff.staffId.slice(6)} - ${staff.assignedRoles.map((role) => ROLE_LABELS[role]).join(' + ')}${staff.active ? '' : ' (inactive)'}`,
     })),
     ...state.members.map((member) => ({
       actor: { kind: 'member', memberId: member.memberId } satisfies DemoActor,
@@ -32,7 +37,7 @@ export function getPersonas(state: DemoState) {
         kind: 'invitation',
         invitationId: invitation.invitationId,
       } satisfies DemoActor,
-      label: `Fictional invitation: ${invitation.email} (${invitation.status}; ${invitation.invitationId})`,
+      label: `Invitation: ${invitation.email} (${invitation.status}; ${invitation.invitationId})`,
     })),
   ];
 }

@@ -78,13 +78,23 @@ export function createInitialDemoState(): DemoState {
     'fern',
     'moss',
   ] as const;
+  const profiles = {
+    maple: ['Maya Chen', 'maya.chen'],
+    cedar: ['Jordan Brooks', 'jordan.brooks'],
+    birch: ['Sam Patel', 'sam.patel'],
+    willow: ['Taylor Reed', 'taylor.reed'],
+    aspen: ['Casey Park', 'casey.park'],
+    juniper: ['Riley Morgan', 'riley.morgan'],
+    fern: ['Jamie Ellis', 'jamie.ellis'],
+    moss: ['Avery Bennett', 'avery.bennett'],
+  } as const;
   const members: Member[] = memberNames.map((name) => {
     const createdAt: UtcInstant =
       name === 'fern' ? '2026-10-04T18:00:00Z' : '2026-10-01T15:00:00Z';
     return {
       memberId: ids.members[name],
-      displayName: `Fictional ${name[0].toUpperCase()}${name.slice(1)}`,
-      verifiedEmail: `${name}@example.invalid`,
+      displayName: profiles[name][0],
+      verifiedEmail: `${profiles[name][1]}@example.invalid`,
       identitySubject: `identity:demo-member-${name}`,
       status:
         name === 'fern' ? 'pending' : name === 'moss' ? 'inactive' : 'active',
@@ -182,27 +192,27 @@ export function createInitialDemoState(): DemoState {
 
   const sprint: ClassType = {
     classTypeId: ids.classTypes.sprint,
-    name: 'Demo Sprint',
+    name: 'Power Intervals',
     durationMinutes: 30,
-    description: 'Fictional short rowing class.',
-    difficulty: 'Illustrative intermediate',
+    description: 'Build power with focused intervals and recovery.',
+    difficulty: 'Intermediate',
     alias: 'Sprint',
-    whatToBring: 'Illustrative note: water and comfortable clothing.',
+    whatToBring: 'Bring water and comfortable training clothes.',
   };
   const technique: ClassType = {
     classTypeId: ids.classTypes.technique,
-    name: 'Demo Technique',
+    name: 'Rowing Foundations',
     durationMinutes: 45,
-    description: 'Fictional technique practice.',
-    difficulty: 'Illustrative beginner',
+    description: 'Refine your stroke with guided technique practice.',
+    difficulty: 'Beginner',
   };
   const endurance: ClassType = {
     classTypeId: ids.classTypes.endurance,
-    name: 'Demo Endurance',
+    name: 'Endurance Row',
     durationMinutes: 60,
-    description: 'Fictional longer rowing class.',
-    difficulty: 'Illustrative advanced',
-    whatToBring: 'Illustrative note: water.',
+    description: 'Develop aerobic endurance with steady-paced rowing.',
+    difficulty: 'Advanced',
+    whatToBring: 'Bring a water bottle.',
   };
   const classes: ScheduledClass[] = [
     {
@@ -230,7 +240,7 @@ export function createInitialDemoState(): DemoState {
       publishedAt: '2026-09-30T16:00:00Z',
       releasedAt: '2026-09-30T16:00:00Z',
       cancelledAt: '2026-10-02T22:00:00Z',
-      cancellationReason: 'Fictional demonstration cancellation.',
+      cancellationReason: 'Coach unavailable.',
       lateCancelWaived: false,
       reviewFlags: [],
     },
@@ -319,11 +329,12 @@ export function createInitialDemoState(): DemoState {
         .filter((item) => item.coachId === ids.staff.coach)
         .map((item) => item.classId),
       coachProfile: {
-        displayName: 'Fictional Coach Indigo',
+        displayName: 'Alex Rivera',
         avatarId: 'avatar:fictional-indigo',
-        biography: 'Fictional technique coach for the demonstration.',
-        certifications: ['Illustrative rowing certificate'],
-        contact: { email: 'coach-indigo@example.invalid' },
+        biography:
+          'Technique-focused coaching for confident, efficient rowing.',
+        certifications: ['Rowing instructor'],
+        contact: { email: 'alex.rivera@example.invalid' },
       },
     },
     {
@@ -335,11 +346,11 @@ export function createInitialDemoState(): DemoState {
         .filter((item) => item.coachId === ids.staff.multiRole)
         .map((item) => item.classId),
       coachProfile: {
-        displayName: 'Fictional Coach Coral',
+        displayName: 'Morgan Ellis',
         avatarId: 'avatar:fictional-coral',
-        biography: 'Fictional coach who also demonstrates front-desk duties.',
-        certifications: ['Illustrative endurance certificate'],
-        contact: { email: 'coach-coral@example.invalid' },
+        biography: 'Endurance coaching and a welcoming start to every class.',
+        certifications: ['Endurance instructor'],
+        contact: { email: 'morgan.ellis@example.invalid' },
       },
     },
     {
@@ -411,7 +422,7 @@ export function createInitialDemoState(): DemoState {
       status: 'staffRemoved',
       removedAt: '2026-10-01T17:00:00Z',
       removedBy: ids.staff.frontDesk,
-      removalReason: 'Fictional staff removal for demonstration.',
+      removalReason: 'Reservation removed at the member’s request.',
     },
     {
       ...booked(
@@ -583,8 +594,7 @@ export function createInitialDemoState(): DemoState {
               previousOutcome: 'noShow',
               newOutcome: 'attended',
               recordedAt: '2026-10-02T16:00:00Z',
-              reason:
-                'Fictional printed-roster reconciliation after demonstration outage.',
+              reason: 'Reconciled with the printed attendance roster.',
             },
           ],
         };
@@ -628,7 +638,7 @@ export function createInitialDemoState(): DemoState {
         recipient: {
           kind: 'member',
           memberId: ids.members.maple,
-          email: 'maple@example.invalid',
+          email: 'maya.chen@example.invalid',
         },
         scenario: 'success',
       },
@@ -646,7 +656,7 @@ export function createInitialDemoState(): DemoState {
         recipient: {
           kind: 'member',
           memberId: ids.members.birch,
-          email: 'birch@example.invalid',
+          email: 'sam.patel@example.invalid',
         },
         scenario: 'success',
       },
@@ -659,7 +669,7 @@ export function createInitialDemoState(): DemoState {
         recipient: {
           kind: 'member',
           memberId: ids.members.maple,
-          email: 'maple@example.invalid',
+          email: 'maya.chen@example.invalid',
         },
         scenario: 'success',
       },
@@ -676,7 +686,7 @@ export function createInitialDemoState(): DemoState {
         recipient: {
           kind: 'member',
           memberId: ids.members.aspen,
-          email: 'aspen@example.invalid',
+          email: 'casey.park@example.invalid',
         },
         scenario: 'success',
       },
@@ -719,7 +729,7 @@ export function createInitialDemoState(): DemoState {
     stations: [
       {
         stationId: ids.stations.north,
-        label: 'Demo North',
+        label: 'Rower 01',
         pm5Serial: 'DEMO-PM5-NORTH',
         inService: true,
         row: 0,
@@ -727,7 +737,7 @@ export function createInitialDemoState(): DemoState {
       },
       {
         stationId: ids.stations.west,
-        label: 'Demo West',
+        label: 'Rower 02',
         pm5Serial: 'DEMO-PM5-WEST',
         inService: true,
         row: 1,
@@ -735,7 +745,7 @@ export function createInitialDemoState(): DemoState {
       },
       {
         stationId: ids.stations.east,
-        label: 'Demo East',
+        label: 'Rower 03',
         pm5Serial: null,
         inService: true,
         row: 1,
@@ -743,22 +753,23 @@ export function createInitialDemoState(): DemoState {
       },
       {
         stationId: ids.stations.outage,
-        label: 'Demo Outage',
+        label: 'Rower 04',
         pm5Serial: 'DEMO-PM5-OUTAGE',
         inService: false,
         row: 0,
         column: 2,
       },
     ],
+    retiredStations: [],
     layout: {
       availability: 'current',
-      orientationLabel: 'Demo entrance at bottom; empty center aisle',
+      orientationLabel: 'Entrance at bottom; center aisle',
     },
     classTypes: [sprint, technique, endurance],
     weeklyTemplates: [
       {
         templateId: ids.templates.weekA,
-        name: 'Illustrative Week A',
+        name: 'Week A',
         entries: [
           {
             entryId: ids.templateEntries.monday,
@@ -778,7 +789,7 @@ export function createInitialDemoState(): DemoState {
       },
       {
         templateId: ids.templates.weekB,
-        name: 'Illustrative Week B',
+        name: 'Week B',
         entries: [
           {
             entryId: ids.templateEntries.tuesday,

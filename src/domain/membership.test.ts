@@ -107,6 +107,7 @@ function state(overrides: Partial<DemoState> = {}): DemoState {
     currentWaiverVersionId: 'waiver:current',
     waiverSignatures: [],
     stations: [],
+    retiredStations: overrides.retiredStations ?? [],
     layout: { availability: 'current' },
     classTypes: [],
     weeklyTemplates: [],

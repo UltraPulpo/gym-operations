@@ -345,7 +345,7 @@ function ProfileEditor({
         <>
           <TextareaField
             label="Certifications"
-            hint="One fictional certification per line; leave blank to clear."
+            hint="One certification per line; leave blank to clear."
             value={draft.certifications}
             error={fieldError('certifications')}
             onChange={(event) =>
@@ -424,10 +424,6 @@ export function CoachesScreen() {
   return (
     <main className={styles.screen}>
       <h1>Coach profiles</h1>
-      <p>
-        Fictional, non-operational demo. Edits are in memory only; refresh
-        resets all data.
-      </p>
       <p>
         Persona permissions are simulated, not authentication. Avatars are
         generated locally.

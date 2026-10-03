@@ -428,7 +428,7 @@ describe('initial fictional demo state', () => {
       if (item.status !== 'draft') expect(item.publishedAt).toBeDefined();
       if (item.status === 'cancelled') {
         expect(item.cancelledAt).toBeDefined();
-        expect(item.cancellationReason).toMatch(/fictional/i);
+        expect(item.cancellationReason).toBe('Coach unavailable.');
       }
     }
     const nonCancelled = state.classes
@@ -1105,13 +1105,13 @@ describe('initial fictional demo state', () => {
       ),
     );
     expect(JSON.stringify(memberView)).not.toContain(
-      'coach-indigo@example.invalid',
+      'alex.rivera@example.invalid',
     );
     expect(
       JSON.stringify(
         value(selectCoachProfile(state, ids.staff.coach, state.activeActor)),
       ),
-    ).toContain('coach-indigo@example.invalid');
+    ).toContain('alex.rivera@example.invalid');
     expect(
       value(
         selectCoachClassHistory(
@@ -1151,14 +1151,15 @@ describe('initial fictional demo state', () => {
   it('contains reserved fictional emails, local avatar identifiers and non-legal demonstration waiver text only', () => {
     const state = createInitialDemoState();
     for (const member of state.members) {
-      expect(member.displayName).toMatch(/^Fictional /);
+      expect(member.displayName).toMatch(/^\S+ \S+/);
+      expect(member.displayName).not.toMatch(/Fictional|Demo/);
       expect(member.verifiedEmail).toMatch(/@example\.invalid$/);
     }
     for (const invitation of state.invitations)
       expect(invitation.email).toMatch(/@example\.invalid$/);
     for (const staff of state.staffAccounts) {
       if (staff.coachProfile) {
-        expect(staff.coachProfile.displayName).toMatch(/^Fictional /);
+        expect(staff.coachProfile.displayName).toMatch(/^\S+ \S+/);
         expect(staff.coachProfile.contact.email).toMatch(/@example\.invalid$/);
         expect(staff.coachProfile.avatarId).toMatch(/^avatar:fictional-/);
         expect(staff.coachProfile.contact.phone).toBeUndefined();

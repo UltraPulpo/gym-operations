@@ -23,9 +23,11 @@ describe('Class types', () => {
     renderWithDemoState(<ClassesScreen />, {
       actor: { kind: 'member', memberId: ids.members.maple },
     });
-    expect(screen.getByText('Demo Sprint')).toBeInTheDocument();
+    expect(screen.getByText('Power Intervals')).toBeInTheDocument();
     expect(screen.queryByRole('form')).not.toBeInTheDocument();
-    expect(screen.getByText(/non-operational/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Existing scheduled snapshots remain unchanged/),
+    ).toBeInTheDocument();
   });
 
   it.each(['30', '45', '60'])(
@@ -105,7 +107,7 @@ describe('Class types', () => {
       screen.getByRole('region', { name: 'Scheduled snapshots' }),
     );
     expect(
-      snapshots.getAllByText(/Demo Sprint.*30 minutes/).length,
+      snapshots.getAllByText(/Power Intervals.*30 minutes/).length,
     ).toBeGreaterThan(0);
     view.rerender(<ScheduleScreen />);
     await view.user.type(screen.getByLabelText('Class date'), '2026-11-10');

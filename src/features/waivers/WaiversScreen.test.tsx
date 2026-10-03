@@ -17,7 +17,7 @@ async function createDraft(view: ReturnType<typeof renderWaivers>) {
   await view.user.clear(view.getByLabelText('Version number'));
   await view.user.type(view.getByLabelText('Version number'), '4');
   await view.user.type(
-    view.getByLabelText('Fictional waiver text'),
+    view.getByLabelText('Waiver text'),
     'Fictional version four. Non-legal demonstration only.',
   );
   await view.user.click(view.getByRole('button', { name: 'Create draft' }));
@@ -31,7 +31,7 @@ function submit(view: ReturnType<typeof renderWaivers>, action: DemoAction) {
   return result!;
 }
 
-describe('fictional waiver screens', () => {
+describe('waiver screens', () => {
   it('creates a draft and confirms publication without altering bookings or signatures', async () => {
     const view = renderWaivers();
     const before = view.store.getSnapshot().state;
@@ -52,7 +52,7 @@ describe('fictional waiver screens', () => {
       view.getByRole('button', { name: 'Publish version 4' }),
     );
     const dialog = view.getByRole('alertdialog', {
-      name: 'Publish fictional waiver?',
+      name: 'Publish waiver?',
     });
     expect(
       within(dialog).getByText(/existing bookings and signatures remain/i),
@@ -68,7 +68,7 @@ describe('fictional waiver screens', () => {
     );
     await view.user.click(
       within(view.getByRole('alertdialog')).getByRole('button', {
-        name: 'Publish fictional version',
+        name: 'Publish version',
       }),
     );
     const after = view.store.getSnapshot().state;
@@ -79,9 +79,7 @@ describe('fictional waiver screens', () => {
     });
     expect(after.bookings).toEqual(before.bookings);
     expect(after.waiverSignatures).toEqual(before.waiverSignatures);
-    expect(
-      view.getByText('Published fictional waiver version 4.'),
-    ).toBeVisible();
+    expect(view.getByText('Published waiver version 4.')).toBeVisible();
     expect(
       view.queryByRole('button', { name: 'Publish version 4' }),
     ).not.toBeInTheDocument();
@@ -91,15 +89,12 @@ describe('fictional waiver screens', () => {
     const view = renderWaivers();
     const before = view.store.getSnapshot();
     await view.user.click(view.getByRole('button', { name: 'Create draft' }));
-    expect(view.getByLabelText('Fictional waiver text')).toHaveAttribute(
+    expect(view.getByLabelText('Waiver text')).toHaveAttribute(
       'aria-invalid',
       'true',
     );
     expect(view.store.getSnapshot()).toBe(before);
-    await view.user.type(
-      view.getByLabelText('Fictional waiver text'),
-      'Fictional draft',
-    );
+    await view.user.type(view.getByLabelText('Waiver text'), 'Fictional draft');
     await view.user.clear(view.getByLabelText('Version number'));
     await view.user.type(view.getByLabelText('Version number'), '1.5');
     await view.user.click(view.getByRole('button', { name: 'Create draft' }));
@@ -110,9 +105,7 @@ describe('fictional waiver screens', () => {
     await view.user.clear(view.getByLabelText('Version number'));
     await view.user.type(view.getByLabelText('Version number'), '2');
     await view.user.click(view.getByRole('button', { name: 'Create draft' }));
-    expect(view.getByLabelText('Fictional waiver text')).toHaveValue(
-      'Fictional draft',
-    );
+    expect(view.getByLabelText('Waiver text')).toHaveValue('Fictional draft');
     expect(
       view
         .getAllByRole('alert')
@@ -126,7 +119,7 @@ describe('fictional waiver screens', () => {
     await view.user.clear(view.getByLabelText('Version number'));
     await view.user.type(view.getByLabelText('Version number'), '4');
     await view.user.type(
-      view.getByLabelText('Fictional waiver text'),
+      view.getByLabelText('Waiver text'),
       'Fictional newer marker',
     );
     await view.user.click(view.getByRole('button', { name: 'Create draft' }));
@@ -135,7 +128,7 @@ describe('fictional waiver screens', () => {
     );
     await view.user.click(
       within(view.getByRole('alertdialog')).getByRole('button', {
-        name: 'Publish fictional version',
+        name: 'Publish version',
       }),
     );
     const before = view.store.getSnapshot();
@@ -160,19 +153,16 @@ describe('fictional waiver screens', () => {
     const before = view.store.getSnapshot().state;
     expect(view.getByText('Outdated signature')).toBeVisible();
     expect(
-      view.getByRole('table', { name: 'Fictional signature history' }),
+      view.getByRole('table', { name: 'Signature history' }),
     ).toHaveTextContent('Version 1');
     expect(
       view.getByRole('table', { name: 'Existing demo bookings' }),
     ).toHaveTextContent(ids.classes.free);
-    expect(view.queryByText('Fictional Maple')).not.toBeInTheDocument();
+    expect(view.queryByText('Maya Chen')).not.toBeInTheDocument();
     expect(view.queryByLabelText('Member to inspect')).not.toBeInTheDocument();
-    await view.user.type(
-      view.getByLabelText('Fictional typed name'),
-      'Fictional Aspen',
-    );
+    await view.user.type(view.getByLabelText('Typed name'), 'Casey Park');
     await view.user.click(
-      view.getByRole('button', { name: 'Sign current fictional waiver' }),
+      view.getByRole('button', { name: 'Sign current waiver' }),
     );
     await view.user.click(
       within(view.getByRole('alertdialog')).getByRole('button', {
@@ -182,11 +172,9 @@ describe('fictional waiver screens', () => {
     expect(view.store.getSnapshot().state.waiverSignatures).toEqual(
       before.waiverSignatures,
     );
-    expect(view.getByLabelText('Fictional typed name')).toHaveValue(
-      'Fictional Aspen',
-    );
+    expect(view.getByLabelText('Typed name')).toHaveValue('Casey Park');
     await view.user.click(
-      view.getByRole('button', { name: 'Sign current fictional waiver' }),
+      view.getByRole('button', { name: 'Sign current waiver' }),
     );
     await view.user.click(
       within(view.getByRole('alertdialog')).getByRole('button', {
@@ -198,36 +186,36 @@ describe('fictional waiver screens', () => {
       expect.objectContaining({
         memberId: ids.members.aspen,
         waiverVersionId: ids.waivers.current,
-        typedName: 'Fictional Aspen',
+        typedName: 'Casey Park',
         signedAt: before.clock.now,
       }),
     ]);
     expect(view.getByText('Current signature')).toBeVisible();
     const history = view.getByRole('table', {
-      name: 'Fictional signature history',
+      name: 'Signature history',
     });
     expect(history).toHaveTextContent('Version 1');
     expect(history).toHaveTextContent('Version 2');
     expect(history).toHaveTextContent(before.clock.now);
     expect(
-      view.queryByRole('button', { name: 'Sign current fictional waiver' }),
+      view.queryByRole('button', { name: 'Sign current waiver' }),
     ).not.toBeInTheDocument();
   });
 
   it('rejects a whitespace signature with an accessible field error and no state changes', async () => {
     const view = renderWaivers({ kind: 'member', memberId: ids.members.aspen });
     const before = view.store.getSnapshot();
-    await view.user.type(view.getByLabelText('Fictional typed name'), '   ');
+    await view.user.type(view.getByLabelText('Typed name'), '   ');
     await view.user.click(
-      view.getByRole('button', { name: 'Sign current fictional waiver' }),
+      view.getByRole('button', { name: 'Sign current waiver' }),
     );
-    expect(view.getByLabelText('Fictional typed name')).toHaveAttribute(
+    expect(view.getByLabelText('Typed name')).toHaveAttribute(
       'aria-invalid',
       'true',
     );
-    expect(
-      view.getByLabelText('Fictional typed name'),
-    ).toHaveAccessibleDescription(/enter a typed name/i);
+    expect(view.getByLabelText('Typed name')).toHaveAccessibleDescription(
+      /enter a typed name/i,
+    );
     expect(view.queryByRole('alertdialog')).not.toBeInTheDocument();
     expect(view.store.getSnapshot()).toBe(before);
   });
@@ -239,11 +227,11 @@ describe('fictional waiver screens', () => {
       ids.members.maple,
     );
     const history = view.getByRole('table', {
-      name: 'Fictional signature history',
+      name: 'Signature history',
     });
     expect(history).toHaveTextContent('Version 1');
     expect(history).toHaveTextContent('Version 2');
-    expect(history).toHaveTextContent('Fictional Maple');
+    expect(history).toHaveTextContent('Maya Chen');
     expect(history).toHaveTextContent('2026-10-04T18:00:00Z');
     expect(view.getByText('Current signature')).toBeVisible();
     await view.user.selectOptions(
@@ -254,23 +242,19 @@ describe('fictional waiver screens', () => {
     expect(
       view.queryByRole('button', { name: /publish version/i }),
     ).not.toBeInTheDocument();
-    expect(
-      view.queryByLabelText('Fictional typed name'),
-    ).not.toBeInTheDocument();
+    expect(view.queryByLabelText('Typed name')).not.toBeInTheDocument();
   });
 
   it('limits coach inspection to members and bookings on assigned classes', async () => {
     const view = renderWaivers({ kind: 'staff', staffId: ids.staff.coach });
     const select = view.getByLabelText('Member to inspect');
     expect(
-      within(select).getByRole('option', { name: 'Fictional Maple' }),
+      within(select).getByRole('option', { name: 'Maya Chen' }),
     ).toBeInTheDocument();
     expect(
-      within(select).queryByRole('option', { name: 'Fictional Aspen' }),
+      within(select).queryByRole('option', { name: 'Casey Park' }),
     ).not.toBeInTheDocument();
-    expect(
-      view.queryByLabelText('Fictional waiver text'),
-    ).not.toBeInTheDocument();
+    expect(view.queryByLabelText('Waiver text')).not.toBeInTheDocument();
     await view.user.selectOptions(select, ids.members.maple);
     const bookings = view.getByRole('table', {
       name: 'Existing demo bookings',
@@ -288,9 +272,7 @@ describe('fictional waiver screens', () => {
       view.getByText(/use the invitation acceptance workflow/i),
     ).toBeVisible();
     expect(view.queryByRole('table')).not.toBeInTheDocument();
-    expect(
-      view.queryByLabelText('Fictional typed name'),
-    ).not.toBeInTheDocument();
+    expect(view.queryByLabelText('Typed name')).not.toBeInTheDocument();
   });
 
   it('blocks booking and check-in after publication, then restores both gates after the member signs', async () => {
@@ -301,7 +283,7 @@ describe('fictional waiver screens', () => {
     );
     await view.user.click(
       within(view.getByRole('alertdialog')).getByRole('button', {
-        name: 'Publish fictional version',
+        name: 'Publish version',
       }),
     );
     expect(view.store.getSnapshot().state.bookings).toEqual(before.bookings);
@@ -335,12 +317,9 @@ describe('fictional waiver screens', () => {
       });
       expect(view.store.getSnapshot()).toBe(rejected);
     }
-    await view.user.type(
-      view.getByLabelText('Fictional typed name'),
-      'Fictional Cedar',
-    );
+    await view.user.type(view.getByLabelText('Typed name'), 'Jordan Brooks');
     await view.user.click(
-      view.getByRole('button', { name: 'Sign current fictional waiver' }),
+      view.getByRole('button', { name: 'Sign current waiver' }),
     );
     await view.user.click(
       within(view.getByRole('alertdialog')).getByRole('button', {
@@ -368,7 +347,7 @@ describe('fictional waiver screens', () => {
     const before = view.store.getSnapshot();
     await view.user.click(
       within(view.getByRole('alertdialog')).getByRole('button', {
-        name: 'Publish fictional version',
+        name: 'Publish version',
       }),
     );
     expect(
@@ -381,12 +360,9 @@ describe('fictional waiver screens', () => {
 
   it('rejects a stale signature confirmation and retains the typed input for retry', async () => {
     const view = renderWaivers({ kind: 'member', memberId: ids.members.aspen });
-    await view.user.type(
-      view.getByLabelText('Fictional typed name'),
-      'Fictional Aspen',
-    );
+    await view.user.type(view.getByLabelText('Typed name'), 'Casey Park');
     await view.user.click(
-      view.getByRole('button', { name: 'Sign current fictional waiver' }),
+      view.getByRole('button', { name: 'Sign current waiver' }),
     );
     expect(
       submit(view, {
@@ -406,11 +382,9 @@ describe('fictional waiver screens', () => {
         .some((alert) => /state changed/i.test(alert.textContent ?? '')),
     ).toBe(true);
     expect(view.store.getSnapshot()).toBe(before);
-    expect(view.getByLabelText('Fictional typed name')).toHaveValue(
-      'Fictional Aspen',
-    );
+    expect(view.getByLabelText('Typed name')).toHaveValue('Casey Park');
     await view.user.click(
-      view.getByRole('button', { name: 'Sign current fictional waiver' }),
+      view.getByRole('button', { name: 'Sign current waiver' }),
     );
     await view.user.click(
       within(view.getByRole('alertdialog')).getByRole('button', {
@@ -433,17 +407,15 @@ describe('fictional waiver screens', () => {
     );
     await view.user.click(
       within(view.getByRole('alertdialog')).getByRole('button', {
-        name: 'Publish fictional version',
+        name: 'Publish version',
       }),
     );
-    expect(
-      view.getByText('Published fictional waiver version 3.'),
-    ).toBeVisible();
+    expect(view.getByText('Published waiver version 3.')).toBeVisible();
 
     await view.user.clear(view.getByLabelText('Version number'));
     await view.user.type(view.getByLabelText('Version number'), '99');
     await view.user.type(
-      view.getByLabelText('Fictional waiver text'),
+      view.getByLabelText('Waiver text'),
       'Unpublished local draft',
     );
     act(() => {
@@ -456,10 +428,10 @@ describe('fictional waiver screens', () => {
       ids.waivers.current,
     );
     expect(
-      view.queryByText('Published fictional waiver version 3.'),
+      view.queryByText('Published waiver version 3.'),
     ).not.toBeInTheDocument();
     expect(view.getByLabelText('Version number')).toHaveValue(4);
-    expect(view.getByLabelText('Fictional waiver text')).toHaveValue('');
+    expect(view.getByLabelText('Waiver text')).toHaveValue('');
   });
 
   it('discards pending publication and draft fields when the same scenario is reloaded', async () => {
@@ -468,7 +440,7 @@ describe('fictional waiver screens', () => {
     await view.user.clear(view.getByLabelText('Version number'));
     await view.user.type(view.getByLabelText('Version number'), '99');
     await view.user.type(
-      view.getByLabelText('Fictional waiver text'),
+      view.getByLabelText('Waiver text'),
       'Draft that must be discarded',
     );
     await view.user.click(
@@ -484,7 +456,7 @@ describe('fictional waiver screens', () => {
     expect(view.store.getSnapshot().state.activeActor).toEqual(admin);
     expect(view.queryByRole('alertdialog')).not.toBeInTheDocument();
     expect(view.getByLabelText('Version number')).toHaveValue(4);
-    expect(view.getByLabelText('Fictional waiver text')).toHaveValue('');
+    expect(view.getByLabelText('Waiver text')).toHaveValue('');
   });
 
   it('rejects non-admin publication and signing for another member at the actual store boundary', () => {
@@ -510,12 +482,12 @@ describe('fictional waiver screens', () => {
         payload: {
           memberId: ids.members.cedar,
           waiverVersionId: ids.waivers.current,
-          typedName: 'Fictional Cedar',
+          typedName: 'Jordan Brooks',
           signatureId: 'signature:unauthorized-demo',
         },
       }),
     ).toMatchObject({ success: false, error: { reason: 'roleDenied' } });
     expect(view.store.getSnapshot()).toBe(memberBefore);
-    expect(view.queryByText('Fictional Cedar')).not.toBeInTheDocument();
+    expect(view.queryByText('Jordan Brooks')).not.toBeInTheDocument();
   });
 });

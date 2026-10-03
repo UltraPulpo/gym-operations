@@ -12,7 +12,10 @@ import type {
 import {
   createStation,
   getClassCapacity,
+  insertLayoutLine,
   placeStation,
+  removeLayoutLine,
+  retireStation,
   selectClassLayout,
   setLayoutOrientation,
   updateStation,
@@ -131,6 +134,7 @@ function fixture(overrides: Partial<DemoState> = {}): DemoState {
         column: 2,
       },
     ],
+    retiredStations: [],
     layout: { availability: 'current', orientationLabel: 'Door' },
     classTypes: [],
     weeklyTemplates: [],
@@ -905,6 +909,190 @@ describe('capacity and station service transitions', () => {
     }
     expect(updateStation(state, 'station:one', { label: ' ' })).toMatchObject({
       success: false,
+    });
+  });
+
+  it('rejects duplicate station IDs that were previously retired', () => {
+    const state = freeze(
+      fixture({
+        retiredStations: [
+          {
+            stationId: 'station:retired',
+            label: 'Retired rower',
+            pm5Serial: null,
+            retiredAt: '2026-10-02T16:10:00Z',
+          },
+        ],
+      }),
+    );
+
+    expect(
+      createStation(state, {
+        ...state.stations[0],
+        stationId: 'station:retired',
+        row: 2,
+        column: 0,
+      }),
+    ).toMatchObject({
+      success: false,
+      error: { category: 'ValidationError' },
+    });
+  });
+
+  describe('station retirement', () => {
+    it('retires an idle station and preserves its history label', () => {
+      const state = freeze(fixture());
+      const next = value(
+        retireStation(state, 'station:two', '2026-10-02T16:45:00Z'),
+      );
+
+      expect(next.stations.map((station) => station.stationId)).toEqual([
+        'station:one',
+      ]);
+      expect(next.retiredStations).toEqual([
+        {
+          stationId: 'station:two',
+          label: 'Rower 2',
+          pm5Serial: null,
+          retiredAt: '2026-10-02T16:45:00Z',
+        },
+      ]);
+      expect(next.bookings).toEqual(state.bookings);
+    });
+
+    it('blocks retirement when active future bookings reference the station', () => {
+      expect(retireStation(freeze(fixture()), 'station:one')).toMatchObject({
+        success: false,
+        error: {
+          category: 'IneligibleDemoAction',
+          reason: 'stationHasActiveBookings',
+          message: expect.stringContaining('1'),
+        },
+      });
+    });
+
+    it('allows retirement when booked reservations are only in completed or cancelled classes', () => {
+      const state = freeze(
+        fixture({
+          classes: [scheduledClass({ status: 'completed' })],
+        }),
+      );
+
+      expect(retireStation(state, 'station:one')).toMatchObject({
+        success: true,
+      });
+    });
+
+    it('rejects missing stations and non-admin actors', () => {
+      const state = freeze(fixture());
+
+      expect(retireStation(state, 'station:missing')).toMatchObject({
+        success: false,
+        error: { category: 'DemoUnavailableState', resource: 'station' },
+      });
+      expect(
+        retireStation(state, 'station:two', undefined, member),
+      ).toMatchObject({
+        success: false,
+        error: { reason: 'roleDenied' },
+      });
+    });
+
+    it('sets zero-capacity flags after retiring the last station', () => {
+      const state = freeze(
+        fixture({
+          stations: [fixture().stations[1]],
+          bookings: [],
+        }),
+      );
+
+      const next = value(retireStation(state, 'station:two'));
+      expect(next.stations).toEqual([]);
+      expect(next.classes[0].reviewFlags).toEqual(['zeroCapacity']);
+    });
+  });
+
+  describe('layout line editing', () => {
+    it('inserts rows and columns by shifting stations at and beyond the index', () => {
+      const rowInserted = value(insertLayoutLine(freeze(fixture()), 'row', 0));
+      expect(rowInserted.stations).toEqual([
+        { ...fixture().stations[0], row: 1 },
+        { ...fixture().stations[1], row: 1 },
+      ]);
+
+      const columnInserted = value(
+        insertLayoutLine(freeze(fixture()), 'column', 2),
+      );
+      expect(columnInserted.stations).toEqual([
+        fixture().stations[0],
+        { ...fixture().stations[1], column: 3 },
+      ]);
+    });
+
+    it('removes empty rows and columns by closing the gap after the index', () => {
+      const stateWithRowGap = fixture({
+        stations: [fixture().stations[0], { ...fixture().stations[1], row: 2 }],
+      });
+      const rowRemoved = value(
+        removeLayoutLine(freeze(stateWithRowGap), 'row', 1),
+      );
+      expect(rowRemoved.stations).toEqual([
+        fixture().stations[0],
+        { ...fixture().stations[1], row: 1 },
+      ]);
+
+      const columnRemoved = value(
+        removeLayoutLine(freeze(fixture()), 'column', 1),
+      );
+      expect(columnRemoved.stations).toEqual([
+        fixture().stations[0],
+        { ...fixture().stations[1], column: 1 },
+      ]);
+    });
+
+    it('rejects occupied or trailing-empty line removal', () => {
+      const state = freeze(fixture());
+
+      expect(removeLayoutLine(state, 'column', 0)).toMatchObject({
+        success: false,
+        error: { category: 'ValidationError' },
+      });
+      expect(removeLayoutLine(state, 'row', 1)).toMatchObject({
+        success: false,
+        error: { category: 'ValidationError' },
+      });
+    });
+
+    it('rejects invalid indexes and overflow shifts', () => {
+      const overflow = freeze(
+        fixture({
+          stations: [
+            {
+              ...fixture().stations[0],
+              row: Number.MAX_SAFE_INTEGER,
+            },
+          ],
+        }),
+      );
+
+      for (const index of [-1, 1.5, NaN, Number.POSITIVE_INFINITY]) {
+        expect(insertLayoutLine(freeze(fixture()), 'row', index)).toMatchObject(
+          {
+            success: false,
+            error: { category: 'ValidationError' },
+          },
+        );
+        expect(removeLayoutLine(freeze(fixture()), 'row', index)).toMatchObject(
+          {
+            success: false,
+            error: { category: 'ValidationError' },
+          },
+        );
+      }
+      expect(insertLayoutLine(overflow, 'row', 0)).toMatchObject({
+        success: false,
+        error: { category: 'ValidationError' },
+      });
     });
   });
 });

@@ -16,6 +16,7 @@ import {
   deleteDraftClass,
   deleteWeeklyTemplate,
   editScheduledClass,
+  insertLayoutLine,
   moveBooking,
   moveOwnBooking,
   publishClasses,
@@ -42,6 +43,8 @@ import {
   leaveWaitlist,
   placeStation,
   promoteWaitlist,
+  removeLayoutLine,
+  retireStation,
 } from '../domain';
 import { getScenarioClockPresets, loadScenario } from '../demo-scenarios';
 import type {
@@ -159,6 +162,9 @@ function stateChangesFromNextState(
     ...(state.stations !== nextState.stations
       ? { stations: nextState.stations }
       : {}),
+    ...(state.retiredStations !== nextState.retiredStations
+      ? { retiredStations: nextState.retiredStations }
+      : {}),
     ...(state.layout !== nextState.layout ? { layout: nextState.layout } : {}),
     ...(state.classTypes !== nextState.classTypes
       ? { classTypes: nextState.classTypes }
@@ -206,6 +212,7 @@ function fullStateChanges(state: DemoState): DemoStateChanges {
     currentWaiverVersionId: state.currentWaiverVersionId,
     waiverSignatures: state.waiverSignatures,
     stations: state.stations,
+    retiredStations: state.retiredStations,
     layout: state.layout,
     classTypes: state.classTypes,
     weeklyTemplates: state.weeklyTemplates,
@@ -720,6 +727,58 @@ export const validateAction: ValidateAction = (state, actor, action, now) => {
         state,
         action.payload.stationId,
         { row: action.payload.row, column: action.payload.column },
+        actor,
+      );
+      return result.success
+        ? accepted(
+            state,
+            actor,
+            action,
+            now,
+            stateChangesFromNextState(state, result.value),
+          )
+        : result;
+    }
+    case 'retireStation': {
+      const permission = requireCapability(state, actor, 'manageStations');
+      if (!permission.success) return permission;
+      const result = retireStation(state, action.payload.stationId, now, actor);
+      return result.success
+        ? accepted(
+            state,
+            actor,
+            action,
+            now,
+            stateChangesFromNextState(state, result.value),
+          )
+        : result;
+    }
+    case 'insertLayoutLine': {
+      const permission = requireCapability(state, actor, 'manageStations');
+      if (!permission.success) return permission;
+      const result = insertLayoutLine(
+        state,
+        action.payload.axis,
+        action.payload.index,
+        actor,
+      );
+      return result.success
+        ? accepted(
+            state,
+            actor,
+            action,
+            now,
+            stateChangesFromNextState(state, result.value),
+          )
+        : result;
+    }
+    case 'removeLayoutLine': {
+      const permission = requireCapability(state, actor, 'manageStations');
+      if (!permission.success) return permission;
+      const result = removeLayoutLine(
+        state,
+        action.payload.axis,
+        action.payload.index,
         actor,
       );
       return result.success

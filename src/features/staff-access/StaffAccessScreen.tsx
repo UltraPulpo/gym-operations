@@ -249,7 +249,7 @@ export function StaffAccessScreen() {
   const accountColumns: readonly TableColumn<StaffAccountView>[] = [
     {
       key: 'staffId',
-      header: 'Fictional staff ID',
+      header: 'Staff ID',
       render: (account) => account.staffId,
     },
     {
@@ -311,9 +311,7 @@ export function StaffAccessScreen() {
       <header className={styles.heading}>
         <div>
           <h1>Staff access</h1>
-          <p>
-            Manage fictional staff account status and fixed-role assignments.
-          </p>
+          <p>Manage staff account status and fixed-role assignments.</p>
         </div>
         <Button onClick={beginCreate}>Create staff account</Button>
       </header>
@@ -326,7 +324,7 @@ export function StaffAccessScreen() {
       {error && !editor && <Alert>{error}</Alert>}
 
       <DataTable
-        caption="Fictional staff accounts"
+        caption="Staff accounts"
         columns={accountColumns}
         rows={accounts}
         getRowKey={(account) => account.staffId}
@@ -337,7 +335,7 @@ export function StaffAccessScreen() {
         <section className={styles.detail} aria-labelledby="selected-account">
           <h2 id="selected-account">Selected account capabilities</h2>
           <p>
-            <strong>Fictional staff ID:</strong> {selected.staffId}
+            <strong>Staff ID:</strong> {selected.staffId}
           </p>
           <p>
             <strong>Status:</strong> {selected.active ? 'Active' : 'Inactive'}
@@ -406,11 +404,11 @@ export function StaffAccessScreen() {
             />
           ) : (
             <p>
-              <strong>Fictional staff ID:</strong> {form.staffId}
+              <strong>Staff ID:</strong> {form.staffId}
             </p>
           )}
           <InputField
-            label="Fictional identity subject"
+            label="Simulated identity subject"
             value={form.identitySubject}
             onChange={(event) => {
               const identitySubject = event.currentTarget.value;

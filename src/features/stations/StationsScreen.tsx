@@ -21,6 +21,7 @@ import {
   Alert,
   Button,
   CheckboxField,
+  ConfirmationDialog,
   InputField,
   SelectField,
   StatusBadge,
@@ -39,6 +40,7 @@ type Submit = (
   action: DemoAction,
   revision: number,
 ) => DomainResult<AcceptedAction>;
+type LayoutAxis = 'row' | 'column';
 type AvailableLayout = Extract<LayoutView, { status: 'available' }>;
 type BaseLayout = {
   readonly status: 'available';
@@ -81,6 +83,9 @@ function nextStationId(state: DemoState): StationId {
   let suffix = 1;
   while (
     state.stations.some(
+      (station) => station.stationId === `station:demo-created-${suffix}`,
+    ) ||
+    state.retiredStations.some(
       (station) => station.stationId === `station:demo-created-${suffix}`,
     )
   ) {
@@ -139,15 +144,14 @@ function selectBaseLayout(
 
 export function StationsScreen() {
   return (
-    <section className={styles.screen}>
+    <main className={styles.screen}>
       <h1>Stations and layout</h1>
       <p>
-        Fictional, non-operational schematic. PM5 associations are data only; no
-        device connection or automatic room detection. Layout placement never
-        reassigns bookings.
+        Room schematic. PM5 associations are data only; no device connection.
+        Layout placement never reassigns bookings.
       </p>
       <StationLayout editable />
-    </section>
+    </main>
   );
 }
 
@@ -156,12 +160,25 @@ export function StationLayout({
   editable = false,
 }: StationLayoutProps) {
   const demo = useDemoState();
+  return (
+    <LayoutWorkspace
+      key={`${demo.workspaceVersion}:${JSON.stringify(demo.activeActor)}:${demo.capabilities.success && demo.capabilities.value.capabilities.includes('manageStations')}`}
+      classId={classId}
+      editable={editable}
+    />
+  );
+}
+
+function LayoutWorkspace({ classId, editable = false }: StationLayoutProps) {
+  const demo = useDemoState();
+  const [editing, setEditing] = useState(false);
   const [chosenClassId, setChosenClassId] = useState<ClassId>();
   const [chosenStationId, setChosenStationId] = useState<StationId>();
   const [feedback, setFeedback] = useState<{
     message: string;
     failed: boolean;
   }>();
+  const stationSelectRef = useRef<HTMLSelectElement>(null);
   const unavailableId = useId();
   if (!demo.capabilities.success) {
     return <UnavailableState message={demo.capabilities.error.message} />;
@@ -205,10 +222,11 @@ export function StationLayout({
               'This class overlay is not available to this persona, or is no longer current or future.',
           },
         };
-  const canManage =
+  const mayManage =
     editable &&
     demo.capabilities.success &&
     demo.capabilities.value.capabilities.includes('manageStations');
+  const canManage = mayManage && editing;
   // Only Admin station metadata is projected from the validation snapshot.
   const stations: readonly Station[] = canManage
     ? demo.state.stations.map((station) => ({ ...station }))
@@ -224,7 +242,12 @@ export function StationLayout({
     setFeedback({
       failed: !result.success,
       message: result.success
-        ? 'Station change saved in this demo only.'
+        ? action.type === 'retireStation'
+          ? 'Station removed.'
+          : action.type === 'insertLayoutLine' ||
+              action.type === 'removeLayoutLine'
+            ? 'Rows and columns updated.'
+            : 'Station change saved.'
         : result.error.message,
     });
     return result;
@@ -232,6 +255,18 @@ export function StationLayout({
 
   return (
     <div className={styles.layout}>
+      {mayManage && (
+        <Button
+          variant="secondary"
+          aria-pressed={editing}
+          onClick={() => {
+            setEditing((value) => !value);
+            setFeedback(undefined);
+          }}
+        >
+          {editing ? 'Finish editing' : 'Edit layout'}
+        </Button>
+      )}
       {classId === undefined && classes.length > 0 && (
         <SelectField
           label="Class overlay"
@@ -255,8 +290,7 @@ export function StationLayout({
       {selectedClass && (
         <p>
           {selectedClass.startsAt <= demo.now ? 'Current' : 'Upcoming'} class.
-          Times shown in {selectedClass.schedule.timezone}, illustrative demo
-          timezone.
+          Times shown in {selectedClass.schedule.timezone}.
         </p>
       )}
       {layout.status === 'available' && layout.audience === 'base' && (
@@ -311,6 +345,7 @@ export function StationLayout({
             <SelectField
               label="Station to edit"
               value={station?.stationId}
+              ref={stationSelectRef}
               onChange={(event) => {
                 const selected = stations.find(
                   (item) => item.stationId === event.target.value,
@@ -342,8 +377,23 @@ export function StationLayout({
                 disabled={!mapAvailable}
                 reasonId={mapAvailable ? undefined : unavailableId}
               />
+              <RemoveStationButton
+                station={station}
+                revision={demo.revision}
+                submit={submit}
+                onSuccess={() => {
+                  setChosenStationId(undefined);
+                  window.setTimeout(() => stationSelectRef.current?.focus(), 0);
+                }}
+              />
             </>
           )}
+          <LayoutLineForm
+            revision={demo.revision}
+            submit={submit}
+            disabled={!mapAvailable}
+            reasonId={mapAvailable ? undefined : unavailableId}
+          />
           <NewStationForm
             stationId={nextStationId(demo.state)}
             nextRow={Math.max(-1, ...stations.map((item) => item.row)) + 1}
@@ -380,11 +430,33 @@ function LayoutGrid({
     stationId: StationId;
     revision: number;
   }>();
+  const [inspectedPosition, setInspectedPosition] = useState<{
+    row: number;
+    column: number;
+  }>();
+  const [inspectedStationId, setInspectedStationId] = useState<StationId>();
+  const stationAtInspectedPosition = view.stations.find(
+    (item) =>
+      item.row === inspectedPosition?.row &&
+      item.column === inspectedPosition.column,
+  );
+  const inspectedStation = inspectedStationId
+    ? view.stations.find((item) => item.stationId === inspectedStationId)
+    : stationAtInspectedPosition;
+  const inspectedEmpty = inspectedPosition && !inspectedStation;
+  const pickedStillExists =
+    !picked ||
+    view.stations.some((station) => station.stationId === picked.stationId);
+  const activePicked = pickedStillExists ? picked : undefined;
   const [announcement, setAnnouncement] = useState(
     editable
       ? 'Use arrows to navigate, Enter or Space to pick and drop, Escape to cancel.'
       : 'Read-only layout. Use arrows to inspect station states.',
   );
+  const layoutAnnouncement =
+    picked && !pickedStillExists
+      ? 'Station removed or no longer available. Pick another station to place.'
+      : announcement;
   const instructionsId = useId();
   const cells = useRef(new Map<string, HTMLButtonElement>());
   const rows = gridAxis([
@@ -397,17 +469,36 @@ function LayoutGrid({
   ]);
   const rowCount = rows[rows.length - 1] + 1;
   const columnCount = columns[columns.length - 1] + 1;
+  const focusNearestCell = (position: { row: number; column: number }) => {
+    window.setTimeout(() => {
+      const nearest = [...cells.current].reduce<{
+        key: string;
+        distance: number;
+      } | null>((best, [key]) => {
+        const [rowValue, columnValue] = key.split(':').map(Number);
+        const distance =
+          Math.abs(rowValue - position.row) +
+          Math.abs(columnValue - position.column);
+        return !best || distance < best.distance ? { key, distance } : best;
+      }, null);
+      if (nearest) cells.current.get(nearest.key)?.focus();
+    }, 0);
+  };
   const activate = (row: number, column: number) => {
-    if (!editable) {
-      setAnnouncement(
-        'Read-only layout. Only an active Admin can edit positions.',
-      );
-      return;
-    }
     const station = view.stations.find(
       (item) => item.row === row && item.column === column,
     );
-    if (!picked) {
+    setInspectedPosition({ row, column });
+    setInspectedStationId(station?.stationId);
+    if (!editable) {
+      setAnnouncement(
+        station
+          ? `Read-only layout. Inspecting ${station.label}. Layout positions unchanged.`
+          : 'Read-only layout. Empty cell. Layout positions unchanged.',
+      );
+      return;
+    }
+    if (!activePicked) {
       if (!station) {
         setAnnouncement('Empty cell. Pick a station first.');
         return;
@@ -421,9 +512,9 @@ function LayoutGrid({
     const result = submit(
       {
         type: 'placeStation',
-        payload: { stationId: picked.stationId, row, column },
+        payload: { stationId: activePicked.stationId, row, column },
       },
-      picked.revision,
+      activePicked.revision,
     );
     setPicked(undefined);
     setAnnouncement(
@@ -477,109 +568,199 @@ function LayoutGrid({
 
   return (
     <>
-      <p id={instructionsId}>{announcement}</p>
+      <p id={instructionsId}>{layoutAnnouncement}</p>
+      {activePicked && (
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setPicked(undefined);
+            setAnnouncement(
+              'Station selection cancelled. No layout positions changed.',
+            );
+          }}
+        >
+          Cancel placement
+        </Button>
+      )}
       {(rows.length < rowCount || columns.length < columnCount) && (
         <p>
           Large empty gaps are compacted. Coordinates remain unchanged; arrows
           navigate displayed cells.
         </p>
       )}
-      <div className={styles.gridScroll}>
-        <div
-          role="grid"
-          aria-label="Station layout"
-          aria-describedby={instructionsId}
-          aria-rowcount={rowCount}
-          aria-colcount={columnCount}
-          className={styles.grid}
-        >
-          {rows.map((row) => (
-            <div
-              key={row}
-              role="row"
-              aria-rowindex={row + 1}
-              className={styles.gridRow}
-              style={{
-                gridTemplateColumns: `repeat(${columns.length}, minmax(10rem, 1fr))`,
-              }}
-            >
-              {columns.map((column) => {
-                const station = view.stations.find(
-                  (item) => item.row === row && item.column === column,
-                );
-                const assigned =
-                  view.audience === 'staff' &&
-                  station &&
-                  'assignedMember' in station
-                    ? station.assignedMember?.displayName
-                    : undefined;
-                const outage =
-                  view.audience === 'staff' &&
-                  station &&
-                  'reviewFlags' in station &&
-                  station.reviewFlags.includes('stationOutOfService');
-                const inactive =
-                  view.audience === 'staff' &&
-                  station &&
-                  'reviewFlags' in station &&
-                  station.reviewFlags.includes('memberInactive');
-                return (
-                  <div key={column} role="gridcell" aria-colindex={column + 1}>
-                    <button
-                      type="button"
-                      ref={(element) => {
-                        const key = `${row}:${column}`;
-                        if (element) cells.current.set(key, element);
-                        else cells.current.delete(key);
-                      }}
-                      tabIndex={
-                        focusPosition.row === row &&
-                        focusPosition.column === column
-                          ? 0
-                          : -1
-                      }
-                      aria-label={`Row ${row + 1}, column ${column + 1}: ${station ? `${station.label}, ${station.stateLabel}${assigned ? `, ${assigned}` : ''}${outage ? ', Station outage: staff review required' : ''}${inactive ? ', Inactive member: staff review required' : ''}` : 'Empty cell'}`}
-                      aria-pressed={Boolean(
-                        picked && station?.stationId === picked.stationId,
-                      )}
-                      className={`${styles.cell} ${station ? styles[station.state] : styles.empty}`}
-                      onFocus={() => setFocusPosition({ row, column })}
-                      onClick={() => activate(row, column)}
-                      onKeyDown={(event) => navigate(event, row, column)}
+      <p className={styles.scrollCue}>
+        Scroll the map sideways when needed. Positions remain fixed.
+      </p>
+      <div className={styles.mapAndDetails}>
+        <div className={styles.gridScroll}>
+          <div
+            role="grid"
+            aria-label="Station layout"
+            aria-describedby={instructionsId}
+            aria-rowcount={rowCount}
+            aria-colcount={columnCount}
+            className={styles.grid}
+          >
+            {rows.map((row) => (
+              <div
+                key={row}
+                role="row"
+                aria-rowindex={row + 1}
+                className={styles.gridRow}
+                style={{
+                  gridTemplateColumns: `repeat(${columns.length}, 6rem)`,
+                }}
+              >
+                {columns.map((column) => {
+                  const station = view.stations.find(
+                    (item) => item.row === row && item.column === column,
+                  );
+                  const assigned =
+                    view.audience === 'staff' &&
+                    station &&
+                    'assignedMember' in station
+                      ? station.assignedMember?.displayName
+                      : undefined;
+                  const outage =
+                    view.audience === 'staff' &&
+                    station &&
+                    'reviewFlags' in station &&
+                    station.reviewFlags.includes('stationOutOfService');
+                  const inactive =
+                    view.audience === 'staff' &&
+                    station &&
+                    'reviewFlags' in station &&
+                    station.reviewFlags.includes('memberInactive');
+                  return (
+                    <div
+                      key={column}
+                      role="gridcell"
+                      aria-colindex={column + 1}
                     >
-                      {station ? (
-                        <>
-                          <strong>{station.label}</strong>
-                          <span>
-                            <span aria-hidden="true">
-                              {icons[station.state]}{' '}
+                      <button
+                        type="button"
+                        ref={(element) => {
+                          const key = `${row}:${column}`;
+                          if (element) cells.current.set(key, element);
+                          else cells.current.delete(key);
+                        }}
+                        tabIndex={
+                          focusPosition.row === row &&
+                          focusPosition.column === column
+                            ? 0
+                            : -1
+                        }
+                        aria-label={`Row ${row + 1}, column ${column + 1}: ${station ? `${station.label}, ${station.stateLabel}${assigned ? `, ${assigned}` : ''}${outage ? ', Station outage: staff review required' : ''}${inactive ? ', Inactive member: staff review required' : ''}` : 'Empty cell'}`}
+                        aria-pressed={Boolean(
+                          station &&
+                          station.stationId ===
+                            (editable
+                              ? activePicked?.stationId
+                              : inspectedStation?.stationId),
+                        )}
+                        className={`${styles.cell} ${station ? styles[station.state] : styles.empty}`}
+                        onFocus={(event) => {
+                          setFocusPosition({ row, column });
+                          event.currentTarget.scrollIntoView?.({
+                            block: 'nearest',
+                            inline: 'nearest',
+                          });
+                        }}
+                        onClick={() => activate(row, column)}
+                        onKeyDown={(event) => navigate(event, row, column)}
+                      >
+                        {station ? (
+                          <>
+                            <strong>{station.label}</strong>
+                            <span>
+                              <span aria-hidden="true">
+                                {icons[station.state]}{' '}
+                              </span>
+                              {station.stateLabel}
                             </span>
-                            {station.stateLabel}
-                          </span>
-                          {assigned && <span>{assigned}</span>}
-                          {outage && (
-                            <span>Station outage: staff review required</span>
-                          )}
-                          {inactive && (
-                            <span>Inactive member: staff review required</span>
-                          )}
-                        </>
-                      ) : (
-                        <span>Empty cell</span>
-                      )}
-                      <small>
-                        Position: row {row}, column {column}
-                      </small>
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
+                          </>
+                        ) : (
+                          <span>Empty cell</span>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
         </div>
+        <section aria-label="Station details" className={styles.inspector}>
+          <h2>{inspectedStation?.label ?? 'Station details'}</h2>
+          {inspectedStation ? (
+            <>
+              <p>{inspectedStation.stateLabel}</p>
+              <p>
+                Position: row {inspectedStation.row}, column{' '}
+                {inspectedStation.column}
+              </p>
+              {view.audience === 'staff' &&
+                'assignedMember' in inspectedStation &&
+                inspectedStation.assignedMember && (
+                  <p>
+                    Assigned member:{' '}
+                    {inspectedStation.assignedMember.displayName}
+                  </p>
+                )}
+              {view.audience === 'staff' &&
+                'reviewFlags' in inspectedStation &&
+                inspectedStation.reviewFlags.includes(
+                  'stationOutOfService',
+                ) && <p>Station outage: staff review required</p>}
+              {view.audience === 'staff' &&
+                'reviewFlags' in inspectedStation &&
+                inspectedStation.reviewFlags.includes('memberInactive') && (
+                  <p>Inactive member: staff review required</p>
+                )}
+              {editable && (
+                <RemoveStationButton
+                  station={inspectedStation}
+                  revision={demo.revision}
+                  submit={submit}
+                  onSuccess={() => {
+                    setPicked(undefined);
+                    setInspectedStationId(undefined);
+                    setAnnouncement(
+                      'Station removed. Pick another station to place.',
+                    );
+                    focusNearestCell({
+                      row: inspectedStation.row,
+                      column: inspectedStation.column,
+                    });
+                  }}
+                />
+              )}
+            </>
+          ) : inspectedEmpty ? (
+            <>
+              <p>
+                Empty cell at row {inspectedPosition.row}, column{' '}
+                {inspectedPosition.column}.
+              </p>
+              <p>Use quick actions to reshape the layout around this cell.</p>
+              {editable && (
+                <EmptyCellActions
+                  row={inspectedPosition.row}
+                  column={inspectedPosition.column}
+                  stations={view.stations}
+                  revision={demo.revision}
+                  submit={submit}
+                  onRemoveSuccess={focusNearestCell}
+                />
+              )}
+            </>
+          ) : (
+            <p>Select a station to inspect its details.</p>
+          )}
+        </section>
       </div>
       <p role="status" aria-label="Layout interaction" className={styles.live}>
-        {announcement}
+        {layoutAnnouncement}
       </p>
     </>
   );
@@ -633,7 +814,7 @@ function StationDetailsForm({
       />
       <InputField
         label="PM5 association"
-        hint="Optional fictional serial; data only."
+        hint="Optional serial; data only."
         value={value.pm5Serial ?? ''}
         onChange={(event) => edit({ pm5Serial: event.target.value })}
       />
@@ -652,11 +833,218 @@ function StationDetailsForm({
   );
 }
 
+function lineIsEmpty(
+  stations: readonly Pick<Station, 'row' | 'column'>[],
+  axis: LayoutAxis,
+  index: number,
+) {
+  return !stations.some((station) => station[axis] === index);
+}
+
+function hasLineBeyond(
+  stations: readonly Pick<Station, 'row' | 'column'>[],
+  axis: LayoutAxis,
+  index: number,
+) {
+  return stations.some((station) => station[axis] > index);
+}
+
+function EmptyCellActions({
+  row,
+  column,
+  stations,
+  revision,
+  submit,
+  onRemoveSuccess,
+}: {
+  row: number;
+  column: number;
+  stations: readonly Pick<Station, 'row' | 'column'>[];
+  revision: number;
+  submit: Submit;
+  onRemoveSuccess: (position: { row: number; column: number }) => void;
+}) {
+  const [removing, setRemoving] = useState<{
+    axis: LayoutAxis;
+    index: number;
+    label: string;
+  }>();
+  const insert = (axis: LayoutAxis, index: number) =>
+    submit({ type: 'insertLayoutLine', payload: { axis, index } }, revision);
+  const remove = (axis: LayoutAxis, index: number) =>
+    submit({ type: 'removeLayoutLine', payload: { axis, index } }, revision);
+  const canRemoveRow =
+    lineIsEmpty(stations, 'row', row) && hasLineBeyond(stations, 'row', row);
+  const canRemoveColumn =
+    lineIsEmpty(stations, 'column', column) &&
+    hasLineBeyond(stations, 'column', column);
+  return (
+    <div className={styles.quickActions}>
+      <Button onClick={() => insert('row', row)}>Insert row above</Button>
+      <Button onClick={() => insert('column', column)}>
+        Insert column left
+      </Button>
+      {canRemoveRow && (
+        <Button
+          variant="danger"
+          onClick={() =>
+            setRemoving({ axis: 'row', index: row, label: `Remove row ${row}` })
+          }
+        >
+          Remove row {row}
+        </Button>
+      )}
+      {canRemoveColumn && (
+        <Button
+          variant="danger"
+          onClick={() =>
+            setRemoving({
+              axis: 'column',
+              index: column,
+              label: `Remove column ${column}`,
+            })
+          }
+        >
+          Remove column {column}
+        </Button>
+      )}
+      <ConfirmationDialog
+        open={removing !== undefined}
+        title="Remove empty layout line?"
+        description={
+          removing
+            ? `Remove ${removing.axis} ${removing.index}. This shifts later stations but never moves bookings.`
+            : ''
+        }
+        confirmLabel={removing?.label ?? 'Remove line'}
+        onCancel={() => setRemoving(undefined)}
+        onConfirm={() => {
+          if (!removing) return;
+          const result = remove(removing.axis, removing.index);
+          setRemoving(undefined);
+          if (result.success) onRemoveSuccess({ row, column });
+        }}
+      />
+    </div>
+  );
+}
+
 interface MapFormProps {
   readonly revision: number;
   readonly submit: Submit;
   readonly disabled: boolean;
   readonly reasonId?: string;
+}
+
+function RemoveStationButton({
+  station,
+  revision,
+  submit,
+  onSuccess,
+}: {
+  station: Pick<Station, 'stationId' | 'label'>;
+  revision: number;
+  submit: Submit;
+  onSuccess?: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  return (
+    <>
+      <Button variant="danger" onClick={() => setConfirming(true)}>
+        Remove station
+      </Button>
+      <ConfirmationDialog
+        open={confirming}
+        title="Remove station?"
+        description={`Remove ${station.label} from the active layout. Existing history keeps its label, but the station will no longer count toward capacity.`}
+        confirmLabel="Remove station"
+        onCancel={() => setConfirming(false)}
+        onConfirm={() => {
+          const result = submit(
+            {
+              type: 'retireStation',
+              payload: { stationId: station.stationId },
+            },
+            revision,
+          );
+          setConfirming(false);
+          if (result.success) onSuccess?.();
+        }}
+      />
+    </>
+  );
+}
+
+function LayoutLineForm({
+  revision,
+  submit,
+  disabled,
+  reasonId,
+}: MapFormProps) {
+  const [axis, setAxis] = useState<LayoutAxis>('row');
+  const [index, setIndex] = useState('0');
+  const [confirming, setConfirming] = useState(false);
+  const removeLabel = 'Remove empty row/column';
+  const submitLine = (type: 'insertLayoutLine' | 'removeLayoutLine') => {
+    if (disabled) return;
+    const result = submit(
+      {
+        type,
+        payload: { axis, index: coordinate(index) },
+      },
+      revision,
+    );
+    if (type === 'removeLayoutLine' || result.success) setConfirming(false);
+  };
+  return (
+    <form
+      noValidate
+      className={styles.form}
+      aria-label="Rows and columns"
+      onSubmit={(event) => event.preventDefault()}
+    >
+      <fieldset disabled={disabled} aria-describedby={reasonId}>
+        <legend>Rows and columns</legend>
+        <SelectField
+          label="Layout axis"
+          value={axis}
+          onChange={(event) => setAxis(event.target.value as LayoutAxis)}
+        >
+          <option value="row">Row</option>
+          <option value="column">Column</option>
+        </SelectField>
+        <InputField
+          label="Layout line index"
+          type="number"
+          min={0}
+          step={1}
+          required
+          value={index}
+          onChange={(event) => setIndex(event.target.value)}
+        />
+        <div className={styles.actions}>
+          <Button type="button" onClick={() => submitLine('insertLayoutLine')}>
+            Insert before
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
+            onClick={() => setConfirming(true)}
+          >
+            {removeLabel}
+          </Button>
+        </div>
+      </fieldset>
+      <ConfirmationDialog
+        open={confirming}
+        title="Remove empty layout line?"
+        description={`Remove ${axis} ${index}. This is allowed only when no station occupies that ${axis}.`}
+        confirmLabel={removeLabel}
+        onCancel={() => setConfirming(false)}
+        onConfirm={() => submitLine('removeLayoutLine')}
+      />
+    </form>
+  );
 }
 
 function PlacementForm({

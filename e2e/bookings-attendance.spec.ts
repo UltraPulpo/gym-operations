@@ -1,3 +1,4 @@
+import { openControls, openNavigation, editLayout } from './workspace';
 import { expect, test } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
 
@@ -47,19 +48,23 @@ async function rowsText(table: Locator) {
 
 async function openDemo(page: Page, baseURL: string | undefined) {
   await page.goto(`${baseURL}#/`);
+  await openControls(page);
   await expect(clock(page)).toHaveText('2026-10-05T15:45:00Z');
-  await expect(page.getByLabel('Fictional persona')).toHaveValue(staff.admin);
+  await expect(page.getByLabel('Persona', { exact: true })).toHaveValue(
+    staff.admin,
+  );
 }
 
 const routes: Record<string, [string, string]> = {
   Bookings: ['/bookings', 'Bookings and waitlists'],
   Attendance: ['/attendance', 'Attendance and outage roster'],
-  Waivers: ['/waivers', 'Fictional waivers'],
+  Waivers: ['/waivers', 'Waivers'],
   Stations: ['/stations', 'Stations and layout'],
   Schedule: ['/schedule', 'Schedule'],
 };
 
 async function navigate(page: Page, name: keyof typeof routes) {
+  await openNavigation(page);
   const [path, heading] = routes[name];
   await page
     .getByRole('navigation', { name: 'Demo navigation' })
@@ -73,6 +78,7 @@ async function navigate(page: Page, name: keyof typeof routes) {
       exact: true,
     }),
   ).toBeVisible();
+  if (name === 'Stations') await editLayout(page);
 }
 
 async function loadScenario(page: Page, name: string, actor: string) {
@@ -81,12 +87,12 @@ async function loadScenario(page: Page, name: string, actor: string) {
     .getByRole('button', { name: 'Load scenario', exact: true })
     .click();
   await expect(page.getByText(`Current scenario: ${name}.`)).toBeVisible();
-  await expect(page.getByLabel('Fictional persona')).toHaveValue(actor);
+  await expect(page.getByLabel('Persona', { exact: true })).toHaveValue(actor);
 }
 
 async function choosePersona(page: Page, actor: string) {
-  await page.getByLabel('Fictional persona').selectOption(actor);
-  await expect(page.getByLabel('Fictional persona')).toHaveValue(actor);
+  await page.getByLabel('Persona', { exact: true }).selectOption(actor);
+  await expect(page.getByLabel('Persona', { exact: true })).toHaveValue(actor);
 }
 
 async function applyPreset(page: Page, name: string, instant: string) {
@@ -153,10 +159,10 @@ test('a stale member booking selection reports a conflict, never success, and re
   const station = workspace(page).getByLabel('Free station');
   await expect(station.getByRole('option')).toHaveText([
     'Choose a free station',
-    'Demo West - Available',
-    'Demo East - Available',
+    'Rower 02 - Available',
+    'Rower 03 - Available',
   ]);
-  await station.selectOption({ label: 'Demo West - Available' });
+  await station.selectOption({ label: 'Rower 02 - Available' });
 
   // Another supported same-browser transition changes the snapshot while the selection is pending.
   await advance(page, '+1 minute');
@@ -170,17 +176,17 @@ test('a stale member booking selection reports a conflict, never success, and re
   await expect(station).toHaveValue('');
   await expect(station.getByRole('option')).toHaveText([
     'Choose a free station',
-    'Demo West - Available',
-    'Demo East - Available',
+    'Rower 02 - Available',
+    'Rower 03 - Available',
   ]);
 
-  await station.selectOption({ label: 'Demo West - Available' });
+  await station.selectOption({ label: 'Rower 02 - Available' });
   await workspace(page).getByRole('button', { name: 'Book station' }).click();
   await expect(bookingResult(page)).toHaveText(
     'Booking confirmed in this demo.',
   );
   await expect(bookingError(page)).toHaveCount(0);
-  await expect(bookedRow(ownBookings(page), 'Demo West')).toHaveCount(1);
+  await expect(bookedRow(ownBookings(page), 'Rower 02')).toHaveCount(1);
 });
 
 test('a stale staff move confirmation is rejected and leaves assignments and history unchanged', async ({
@@ -188,23 +194,21 @@ test('a stale staff move confirmation is rejected and leaves assignments and his
 }) => {
   await openBookings(page, classes.morning);
   const before = await rowsText(roster(page));
-  await expect(row(roster(page), 'Fictional Cedar', 'Demo West')).toHaveCount(
-    1,
-  );
+  await expect(row(roster(page), 'Jordan Brooks', 'Rower 02')).toHaveCount(1);
   const destinations = workspace(page)
     .getByRole('region', { name: 'Staff booking controls' })
     .getByLabel('Destination station');
   await workspace(page)
     .getByLabel('Booked member')
-    .selectOption({ label: 'Fictional Cedar - Demo West' });
+    .selectOption({ label: 'Jordan Brooks - Rower 02' });
   await expect(destinations.getByRole('option')).not.toContainText([
-    /Demo Outage/,
+    /Rower 04/,
   ]);
 
   await reviewStaffReseat(
     page,
-    'Fictional Cedar - Demo West',
-    'Demo East - Available',
+    'Jordan Brooks - Rower 02',
+    'Rower 03 - Available',
   );
   await expect(confirmation(page)).toContainText('Confirm station move');
   await confirmation(page).getByRole('button', { name: 'Cancel' }).click();
@@ -216,7 +220,7 @@ test('a stale staff move confirmation is rejected and leaves assignments and his
     .getByRole('button', { name: 'Review reseating' })
     .click();
   await expect(confirmation(page)).toContainText(
-    'Move Fictional Cedar from Demo West to Demo East?',
+    'Move Jordan Brooks from Rower 02 to Rower 03?',
   );
   await confirmation(page)
     .getByRole('button', { name: 'Confirm move' })
@@ -227,8 +231,8 @@ test('a stale staff move confirmation is rejected and leaves assignments and his
 
   await reviewStaffReseat(
     page,
-    'Fictional Cedar - Demo West',
-    'Demo East - Available',
+    'Jordan Brooks - Rower 02',
+    'Rower 03 - Available',
   );
   await confirmation(page)
     .getByRole('button', { name: 'Confirm move' })
@@ -237,11 +241,9 @@ test('a stale staff move confirmation is rejected and leaves assignments and his
     'Station move confirmed in this demo.',
   );
   await expect(
-    bookedRow(roster(page), 'Fictional Cedar', 'Demo East'),
+    bookedRow(roster(page), 'Jordan Brooks', 'Rower 03'),
   ).toContainText('Booked; Not checked in');
-  await expect(row(roster(page), 'Fictional Cedar', 'Demo West')).toHaveCount(
-    0,
-  );
+  await expect(row(roster(page), 'Jordan Brooks', 'Rower 02')).toHaveCount(0);
 });
 
 test('a cancellation before cutoff promotes the first eligible FIFO waiter and retains skipped waiters for review @smoke', async ({
@@ -250,30 +252,30 @@ test('a cancellation before cutoff promotes the first eligible FIFO waiter and r
   await loadScenario(page, 'Capacity and waitlist', 'member:juniper');
   await choosePersona(page, 'member:maple');
   await openBookings(page, classes.full);
-  await expect(bookedRow(ownBookings(page), 'Demo North')).toHaveCount(1);
+  await expect(bookedRow(ownBookings(page), 'Rower 01')).toHaveCount(1);
   await cancelOwnBooking(page);
-  await expect(row(ownBookings(page), 'Demo North')).toContainText('cancelled');
-  await expect(row(ownBookings(page), 'Demo North')).toContainText(
+  await expect(row(ownBookings(page), 'Rower 01')).toContainText('cancelled');
+  await expect(row(ownBookings(page), 'Rower 01')).toContainText(
     'Cancelled; Not checked in',
   );
 
   await choosePersona(page, staff.admin);
   await openBookings(page, classes.full);
-  await expect(
-    bookedRow(roster(page), 'Fictional Willow', 'Demo North'),
-  ).toHaveCount(1);
+  await expect(bookedRow(roster(page), 'Taylor Reed', 'Rower 01')).toHaveCount(
+    1,
+  );
   await expect(
     workspace(page).getByText(/free in-service stations: 0/),
   ).toBeVisible();
-  await expect(row(waitlist(page), 'Fictional Moss')).toContainText(
+  await expect(row(waitlist(page), 'Avery Bennett')).toContainText(
     'Inactive member: staff review required',
   );
-  await expect(row(waitlist(page), 'Fictional Moss')).toContainText('waiting');
-  await expect(row(waitlist(page), 'Fictional Aspen')).toContainText(
+  await expect(row(waitlist(page), 'Avery Bennett')).toContainText('waiting');
+  await expect(row(waitlist(page), 'Casey Park')).toContainText(
     'Current waiver required',
   );
-  await expect(row(waitlist(page), 'Fictional Aspen')).toContainText('waiting');
-  await expect(row(waitlist(page), 'Fictional Willow')).toHaveCount(0);
+  await expect(row(waitlist(page), 'Casey Park')).toContainText('waiting');
+  await expect(row(waitlist(page), 'Taylor Reed')).toHaveCount(0);
   await expect(workspace(page).getByText(/waiting: 2\./)).toBeVisible();
   await expect(
     workspace(page)
@@ -298,14 +300,12 @@ test('the waitlist cutoff is strict: one minute before promotes, exact cutoff le
   await choosePersona(page, 'member:maple');
   await openBookings(page, classes.full);
   await cancelOwnBooking(page);
-  await expect(row(ownBookings(page), 'Demo North')).toContainText(
-    'Late cancel',
-  );
+  await expect(row(ownBookings(page), 'Rower 01')).toContainText('Late cancel');
   await choosePersona(page, staff.admin);
   await openBookings(page, classes.full);
-  await expect(
-    bookedRow(roster(page), 'Fictional Willow', 'Demo North'),
-  ).toHaveCount(1);
+  await expect(bookedRow(roster(page), 'Taylor Reed', 'Rower 01')).toHaveCount(
+    1,
+  );
 
   await advance(page, '+1 minute');
   await expect(clock(page)).toHaveText('2026-10-05T18:00:00Z');
@@ -314,12 +314,12 @@ test('the waitlist cutoff is strict: one minute before promotes, exact cutoff le
   await cancelOwnBooking(page);
   await choosePersona(page, staff.admin);
   await openBookings(page, classes.full);
-  await expect(bookedRow(roster(page), 'Demo West')).toHaveCount(0);
+  await expect(bookedRow(roster(page), 'Rower 02')).toHaveCount(0);
   await expect(
     workspace(page).getByText(/free in-service stations: 1/),
   ).toBeVisible();
-  await expect(row(waitlist(page), 'Fictional Moss')).toContainText('waiting');
-  await expect(row(waitlist(page), 'Fictional Aspen')).toContainText('waiting');
+  await expect(row(waitlist(page), 'Avery Bennett')).toContainText('waiting');
+  await expect(row(waitlist(page), 'Casey Park')).toContainText('waiting');
 
   await choosePersona(page, 'member:juniper');
   await openBookings(page, classes.full);
@@ -328,12 +328,12 @@ test('the waitlist cutoff is strict: one minute before promotes, exact cutoff le
   ).toBeDisabled();
   await workspace(page)
     .getByLabel('Free station')
-    .selectOption({ label: 'Demo West - Available' });
+    .selectOption({ label: 'Rower 02 - Available' });
   await workspace(page).getByRole('button', { name: 'Book station' }).click();
   await expect(bookingResult(page)).toHaveText(
     'Booking confirmed in this demo.',
   );
-  await expect(bookedRow(ownBookings(page), 'Demo West')).toHaveCount(1);
+  await expect(bookedRow(ownBookings(page), 'Rower 02')).toHaveCount(1);
 });
 
 test('out-of-service stations, class cancellation, and occupied swaps never promote waiters', async ({
@@ -346,8 +346,8 @@ test('out-of-service stations, class cancellation, and occupied swaps never prom
 
   await reviewStaffReseat(
     page,
-    'Fictional Maple - Demo North',
-    'Demo East - Booked, not checked in',
+    'Maya Chen - Rower 01',
+    'Rower 03 - Booked, not checked in',
   );
   await expect(confirmation(page)).toContainText(
     'Confirm occupied-station swap',
@@ -358,15 +358,13 @@ test('out-of-service stations, class cancellation, and occupied swaps never prom
   await expect(bookingResult(page)).toHaveText(
     'Station swap confirmed in this demo.',
   );
-  await expect(
-    bookedRow(roster(page), 'Fictional Maple', 'Demo East'),
-  ).toHaveCount(1);
+  await expect(bookedRow(roster(page), 'Maya Chen', 'Rower 03')).toHaveCount(1);
   expect(await rowsText(waitlist(page))).toEqual(waitlistBefore);
 
   await navigate(page, 'Stations');
   await workspace(page)
     .getByLabel('Station to edit')
-    .selectOption({ label: 'Demo East' });
+    .selectOption({ label: 'Rower 03' });
   await workspace(page).getByLabel('In service', { exact: true }).uncheck();
   await workspace(page).getByRole('button', { name: 'Save station' }).click();
   await choosePersona(page, 'member:maple');
@@ -374,7 +372,7 @@ test('out-of-service stations, class cancellation, and occupied swaps never prom
   await cancelOwnBooking(page);
   await choosePersona(page, staff.admin);
   await openBookings(page, classes.full);
-  await expect(bookedRow(roster(page), 'Fictional Willow')).toHaveCount(0);
+  await expect(bookedRow(roster(page), 'Taylor Reed')).toHaveCount(0);
   expect(await rowsText(waitlist(page))).toEqual(waitlistBefore);
 
   await navigate(page, 'Schedule');
@@ -389,13 +387,13 @@ test('out-of-service stations, class cancellation, and occupied swaps never prom
   await expect(
     workspace(page).getByText(/Class status: cancelled/),
   ).toBeVisible();
-  await expect(row(roster(page), 'Fictional Willow')).toHaveCount(0);
+  await expect(row(roster(page), 'Taylor Reed')).toHaveCount(0);
   await expect(bookedRow(roster(page))).toHaveCount(0);
   await expect(
-    withStatus(row(roster(page), 'Fictional Birch', 'Demo North'), 'cancelled'),
+    withStatus(row(roster(page), 'Sam Patel', 'Rower 01'), 'cancelled'),
   ).toHaveCount(1);
   await expect(
-    withStatus(row(roster(page), 'Fictional Cedar', 'Demo West'), 'cancelled'),
+    withStatus(row(roster(page), 'Jordan Brooks', 'Rower 02'), 'cancelled'),
   ).toHaveCount(1);
   await expect(workspace(page).getByText(/waiting: 0\./)).toBeVisible();
   await expect(waitlist(page)).toContainText('No records to display.');
@@ -430,11 +428,11 @@ test('leaving and rejoining the waitlist places the member at the FIFO tail', as
   const waiting = waitlist(page)
     .getByRole('row')
     .filter({ hasText: 'waiting' });
-  await expect(waiting.last()).toContainText('Fictional Juniper');
+  await expect(waiting.last()).toContainText('Riley Morgan');
   await expect(waiting.last()).toContainText('7');
-  await expect(
-    row(waitlist(page), 'Fictional Willow', 'waiting'),
-  ).toContainText('4');
+  await expect(row(waitlist(page), 'Taylor Reed', 'waiting')).toContainText(
+    '4',
+  );
 });
 
 test('member cancellation at the exact late-cancel cutoff is not late, after it is late, and staff removal is distinct', async ({
@@ -449,7 +447,7 @@ test('member cancellation at the exact late-cancel cutoff is not late, after it 
   await choosePersona(page, 'member:maple');
   await openBookings(page, classes.full);
   await cancelOwnBooking(page);
-  await expect(row(ownBookings(page), 'Demo North')).toContainText(
+  await expect(row(ownBookings(page), 'Rower 01')).toContainText(
     'Cancelled; Not checked in',
   );
 
@@ -457,7 +455,7 @@ test('member cancellation at the exact late-cancel cutoff is not late, after it 
   await choosePersona(page, 'member:cedar');
   await openBookings(page, classes.full);
   await cancelOwnBooking(page);
-  await expect(row(ownBookings(page), 'Demo West')).toContainText(
+  await expect(row(ownBookings(page), 'Rower 02')).toContainText(
     'Late cancel; Not checked in',
   );
 
@@ -468,13 +466,13 @@ test('member cancellation at the exact late-cancel cutoff is not late, after it 
   });
   await controls
     .getByLabel('Booked member')
-    .selectOption({ label: 'Fictional Birch - Demo East' });
+    .selectOption({ label: 'Sam Patel - Rower 03' });
   await controls.getByRole('button', { name: 'Remove booking' }).click();
   await expect(confirmation(page)).toHaveCount(0);
   await expect(bookingError(page)).toHaveText(
     'Explain why the booking is removed.',
   );
-  await expect(bookedRow(roster(page), 'Fictional Birch')).toHaveCount(1);
+  await expect(bookedRow(roster(page), 'Sam Patel')).toHaveCount(1);
   await controls
     .getByLabel('Removal reason')
     .fill('Fictional staff removal reason.');
@@ -488,15 +486,15 @@ test('member cancellation at the exact late-cancel cutoff is not late, after it 
   await expect(bookingResult(page)).toContainText(
     'Staff removal confirmed in this demo.',
   );
-  await expect(row(roster(page), 'Fictional Birch', 'Demo East')).toContainText(
+  await expect(row(roster(page), 'Sam Patel', 'Rower 03')).toContainText(
     'Staff removal; Not checked in',
   );
-  await expect(row(roster(page), 'Fictional Cedar', 'Demo West')).toContainText(
+  await expect(row(roster(page), 'Jordan Brooks', 'Rower 02')).toContainText(
     'Late cancel',
   );
-  await expect(
-    row(roster(page), 'Fictional Maple', 'Demo North'),
-  ).toContainText('Cancelled; Not checked in');
+  await expect(row(roster(page), 'Maya Chen', 'Rower 01')).toContainText(
+    'Cancelled; Not checked in',
+  );
 });
 
 test('occupied swaps need explicit confirmation; rejection preserves both assignments and outcomes', async ({
@@ -510,11 +508,11 @@ test('occupied swaps need explicit confirmation; rejection preserves both assign
   const emailsBefore = await rowsText(emails);
   await reviewStaffReseat(
     page,
-    'Fictional Maple - Demo North',
-    'Demo East - Booked, not checked in',
+    'Maya Chen - Rower 01',
+    'Rower 03 - Booked, not checked in',
   );
   await expect(confirmation(page)).toContainText(
-    'Swap Fictional Maple at Demo North with Fictional Birch at Demo East? Neither assignment changes until confirmation.',
+    'Swap Maya Chen at Rower 01 with Sam Patel at Rower 03? Neither assignment changes until confirmation.',
   );
   await confirmation(page).getByRole('button', { name: 'Cancel' }).click();
   expect(await rowsText(roster(page))).toEqual(before);
@@ -535,12 +533,12 @@ test('occupied swaps need explicit confirmation; rejection preserves both assign
   await expect(bookingResult(page)).toHaveText(
     'Station swap confirmed in this demo.',
   );
-  await expect(
-    bookedRow(roster(page), 'Fictional Maple', 'Demo East'),
-  ).toContainText('Booked; Not checked in');
-  await expect(
-    bookedRow(roster(page), 'Fictional Birch', 'Demo North'),
-  ).toContainText('Booked; Not checked in');
+  await expect(bookedRow(roster(page), 'Maya Chen', 'Rower 03')).toContainText(
+    'Booked; Not checked in',
+  );
+  await expect(bookedRow(roster(page), 'Sam Patel', 'Rower 01')).toContainText(
+    'Booked; Not checked in',
+  );
   expect(await rowsText(emails)).toEqual(emailsBefore);
 });
 
@@ -567,11 +565,11 @@ test('stale and unavailable layouts disable all reseating without erasing bookin
       controls.getByRole('button', { name: 'Review reseating' }),
     ).toBeDisabled();
     await expect(
-      bookedRow(roster(page), 'Fictional Cedar', 'Demo West'),
+      bookedRow(roster(page), 'Jordan Brooks', 'Rower 02'),
     ).toHaveCount(1);
-    await expect(
-      bookedRow(roster(page), 'Fictional Maple', 'Demo North'),
-    ).toHaveCount(1);
+    await expect(bookedRow(roster(page), 'Maya Chen', 'Rower 01')).toHaveCount(
+      1,
+    );
     await expect(confirmation(page)).toHaveCount(0);
     await expect(bookingResult(page)).toHaveCount(0);
   }
@@ -583,16 +581,14 @@ test('member self-check-in opens at the lead boundary only with a current waiver
   await choosePersona(page, 'member:aspen');
   await openAttendance(page, classes.free);
   const checkIn = attendanceRoster(page).getByRole('button', {
-    name: 'Check in Fictional Aspen',
+    name: 'Check in Casey Park',
   });
   await expect(checkIn).toBeDisabled();
 
   await navigate(page, 'Waivers');
+  await workspace(page).getByLabel('Typed name').fill('Casey Park');
   await workspace(page)
-    .getByLabel('Fictional typed name')
-    .fill('Fictional Aspen');
-  await workspace(page)
-    .getByRole('button', { name: 'Sign current fictional waiver' })
+    .getByRole('button', { name: 'Sign current waiver' })
     .click();
   await confirmation(page)
     .getByRole('button', { name: 'Record simulated signature' })
@@ -610,7 +606,7 @@ test('member self-check-in opens at the lead boundary only with a current waiver
   await expect(
     workspace(page).getByText('Simulated check-in recorded.'),
   ).toBeVisible();
-  await expect(row(attendanceRoster(page), 'Fictional Aspen')).toContainText(
+  await expect(row(attendanceRoster(page), 'Casey Park')).toContainText(
     'Checked in at 2026-10-05T16:45:00Z (UTC)',
   );
 });
@@ -622,18 +618,16 @@ test('an outdated waiver blocks self-check-in inside the window until the curren
   await expect(clock(page)).toHaveText('2026-10-05T17:15:00Z');
   await openAttendance(page, classes.free);
   const checkIn = attendanceRoster(page).getByRole('button', {
-    name: 'Check in Fictional Aspen',
+    name: 'Check in Casey Park',
   });
   await expect(checkIn).toBeDisabled();
-  await expect(row(attendanceRoster(page), 'Fictional Aspen')).toContainText(
+  await expect(row(attendanceRoster(page), 'Casey Park')).toContainText(
     /waiver/i,
   );
   await navigate(page, 'Waivers');
+  await workspace(page).getByLabel('Typed name').fill('Casey Park');
   await workspace(page)
-    .getByLabel('Fictional typed name')
-    .fill('Fictional Aspen');
-  await workspace(page)
-    .getByRole('button', { name: 'Sign current fictional waiver' })
+    .getByRole('button', { name: 'Sign current waiver' })
     .click();
   await confirmation(page)
     .getByRole('button', { name: 'Record simulated signature' })
@@ -641,7 +635,7 @@ test('an outdated waiver blocks self-check-in inside the window until the curren
   await openAttendance(page, classes.free);
   await expect(checkIn).toBeEnabled();
   await checkIn.click();
-  await expect(row(attendanceRoster(page), 'Fictional Aspen')).toContainText(
+  await expect(row(attendanceRoster(page), 'Casey Park')).toContainText(
     'Checked in at 2026-10-05T17:15:00Z (UTC)',
   );
 });
@@ -657,12 +651,12 @@ test('member self-check-in closes after the grace boundary', async ({
   await choosePersona(page, 'member:cedar');
   await openAttendance(page, classes.morning);
   const checkIn = attendanceRoster(page).getByRole('button', {
-    name: 'Check in Fictional Cedar',
+    name: 'Check in Jordan Brooks',
   });
   await expect(checkIn).toBeEnabled();
   await advance(page, '+1 minute');
   await expect(checkIn).toBeDisabled();
-  await expect(row(attendanceRoster(page), 'Fictional Cedar')).toContainText(
+  await expect(row(attendanceRoster(page), 'Jordan Brooks')).toContainText(
     'Not checked in',
   );
 });
@@ -679,8 +673,8 @@ test('the exact class end records no-shows once; corrections keep history and ma
   await advance(page, '+1 minute', 9);
   await expect(clock(page)).toHaveText('2026-10-05T16:44:00Z');
   await openAttendance(page, classes.morning);
-  const cedar = row(attendanceRoster(page), 'Fictional Cedar');
-  const maple = row(attendanceRoster(page), 'Fictional Maple');
+  const cedar = row(attendanceRoster(page), 'Jordan Brooks');
+  const maple = row(attendanceRoster(page), 'Maya Chen');
   await expect(
     cedar.getByRole('cell', { name: 'Booked', exact: true }),
   ).toHaveCount(1);
@@ -704,7 +698,7 @@ test('the exact class end records no-shows once; corrections keep history and ma
   });
   await correction
     .getByLabel('Attendance record')
-    .selectOption({ label: 'Fictional Cedar' });
+    .selectOption({ label: 'Jordan Brooks' });
   await correction.getByLabel('Corrected outcome').selectOption('attended');
   await correction
     .getByLabel('Correction reason')
@@ -735,7 +729,7 @@ test('the exact class end records no-shows once; corrections keep history and ma
   await manual.getByLabel('Manual class').selectOption(classes.morning);
   await manual
     .getByLabel('Manual member', { exact: true })
-    .selectOption({ label: 'Fictional Juniper' });
+    .selectOption({ label: 'Riley Morgan' });
   await manual.getByLabel('Manual outcome').selectOption('attended');
   await manual
     .getByLabel('Manual entry reason')
@@ -748,13 +742,13 @@ test('the exact class end records no-shows once; corrections keep history and ma
       'Simulated manual attendance recorded; bookings unchanged.',
     ),
   ).toBeVisible();
-  const juniper = row(attendanceRoster(page), 'Fictional Juniper');
+  const juniper = row(attendanceRoster(page), 'Riley Morgan');
   await expect(juniper).toContainText('No assigned station');
   await expect(juniper).toContainText('Manual outage');
   await expect(juniper).toContainText('No active booking');
   await openBookings(page, classes.morning);
   expect(await rowsText(roster(page))).toEqual(bookingsBefore);
-  await expect(row(roster(page), 'Fictional Juniper')).toHaveCount(0);
+  await expect(row(roster(page), 'Riley Morgan')).toHaveCount(0);
 });
 
 test('roster-only staff reseating is allowed at the inclusive class end with a closed map and denied afterward', async ({
@@ -770,14 +764,14 @@ test('roster-only staff reseating is allowed at the inclusive class end with a c
   await expect(
     workspace(page).getByRole('grid', { name: 'Station layout' }),
   ).toHaveCount(0);
-  await expect(row(roster(page), 'Fictional Cedar')).toContainText(
+  await expect(row(roster(page), 'Jordan Brooks')).toContainText(
     'No-show; Not checked in',
   );
 
   await reviewStaffReseat(
     page,
-    'Fictional Cedar - Demo West',
-    'Demo East - Available',
+    'Jordan Brooks - Rower 02',
+    'Rower 03 - Available',
   );
   await confirmation(page)
     .getByRole('button', { name: 'Confirm move' })
@@ -785,7 +779,7 @@ test('roster-only staff reseating is allowed at the inclusive class end with a c
   await expect(bookingResult(page)).toHaveText(
     'Station move confirmed in this demo.',
   );
-  await expect(row(roster(page), 'Fictional Cedar', 'Demo East')).toContainText(
+  await expect(row(roster(page), 'Jordan Brooks', 'Rower 03')).toContainText(
     'No-show; Not checked in',
   );
 

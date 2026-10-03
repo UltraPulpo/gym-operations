@@ -105,7 +105,7 @@ const actions = {
       memberId: ids.members.aspen,
       signatureId: 'signature:new',
       waiverVersionId: ids.waivers.current,
-      typedName: 'Fictional Aspen',
+      typedName: 'Casey Park',
     },
   },
   createStation: {
@@ -119,6 +119,18 @@ const actions = {
   placeStation: {
     type: 'placeStation',
     payload: { stationId: ids.stations.north, row: 2, column: 2 },
+  },
+  retireStation: {
+    type: 'retireStation',
+    payload: { stationId: ids.stations.outage },
+  },
+  insertLayoutLine: {
+    type: 'insertLayoutLine',
+    payload: { axis: 'column', index: 1 },
+  },
+  removeLayoutLine: {
+    type: 'removeLayoutLine',
+    payload: { axis: 'column', index: 1 },
   },
   setLayoutOrientation: {
     type: 'setLayoutOrientation',
@@ -400,6 +412,9 @@ describe('accepted demo reducer', () => {
     createStation: ['stations', 'classes'],
     updateStation: ['stations', 'bookings', 'classes'],
     placeStation: ['stations'],
+    retireStation: ['stations', 'retiredStations', 'bookings', 'classes'],
+    insertLayoutLine: ['stations'],
+    removeLayoutLine: ['stations'],
     setLayoutOrientation: ['layout'],
     createClassType: ['classTypes'],
     updateClassType: ['classTypes'],
@@ -478,6 +493,14 @@ describe('accepted demo reducer', () => {
         currentWaiverVersionId: null,
         waiverSignatures: state.waiverSignatures.slice(1),
         stations: state.stations.slice(1),
+        retiredStations: [
+          {
+            stationId: ids.stations.outage,
+            label: 'Retired rower',
+            pm5Serial: null,
+            retiredAt: state.clock.now,
+          },
+        ],
         layout: { availability: 'unavailable' as const },
         classTypes: state.classTypes.slice(1),
         weeklyTemplates: state.weeklyTemplates.slice(1),

@@ -154,7 +154,7 @@ const routeCases = {
         memberId: ids.members.aspen,
         signatureId: 'signature:validation-aspen-current',
         waiverVersionId: ids.waivers.current,
-        typedName: 'Fictional Aspen',
+        typedName: 'Casey Park',
       },
     }),
   },
@@ -178,7 +178,7 @@ const routeCases = {
       type: 'updateStation',
       payload: {
         stationId: ids.stations.north,
-        updates: { label: 'Demo North Updated' },
+        updates: { label: 'Rower 01 Updated' },
       },
     }),
   },
@@ -186,6 +186,30 @@ const routeCases = {
     action: () => ({
       type: 'placeStation',
       payload: { stationId: ids.stations.north, row: 2, column: 2 },
+    }),
+  },
+  retireStation: {
+    setup: (state) => ({
+      ...state,
+      bookings: state.bookings.filter(
+        (booking) => booking.stationId !== ids.stations.outage,
+      ),
+    }),
+    action: () => ({
+      type: 'retireStation',
+      payload: { stationId: ids.stations.outage },
+    }),
+  },
+  insertLayoutLine: {
+    action: () => ({
+      type: 'insertLayoutLine',
+      payload: { axis: 'column', index: 1 },
+    }),
+  },
+  removeLayoutLine: {
+    action: () => ({
+      type: 'removeLayoutLine',
+      payload: { axis: 'column', index: 1 },
     }),
   },
   setLayoutOrientation: {
@@ -203,7 +227,7 @@ const routeCases = {
           name: 'Demo Strength',
           durationMinutes: 45,
           description: 'Fictional strength class.',
-          difficulty: 'Illustrative intermediate',
+          difficulty: 'Intermediate',
         },
       },
     }),
@@ -213,7 +237,7 @@ const routeCases = {
       type: 'updateClassType',
       payload: {
         classTypeId: ids.classTypes.sprint,
-        updates: { name: 'Demo Sprint Updated' },
+        updates: { name: 'Power Intervals Updated' },
       },
     }),
   },
@@ -241,7 +265,7 @@ const routeCases = {
       type: 'updateWeeklyTemplate',
       payload: {
         templateId: ids.templates.weekA,
-        updates: { name: 'Illustrative Week A Updated' },
+        updates: { name: 'Week A Updated' },
       },
     }),
   },
@@ -665,11 +689,35 @@ const routeAssertions = {
     expect(
       next.stations.find((station) => station.stationId === ids.stations.north)
         ?.label,
-    ).toBe('Demo North Updated'),
+    ).toBe('Rower 01 Updated'),
   placeStation: (next) =>
     expect(
       next.stations.find((station) => station.stationId === ids.stations.north),
     ).toMatchObject({ row: 2, column: 2 }),
+  retireStation: (next, before) => {
+    expect(
+      next.stations.some(
+        (station) => station.stationId === ids.stations.outage,
+      ),
+    ).toBe(false);
+    expect(next.retiredStations).toEqual([
+      ...before.retiredStations,
+      {
+        stationId: ids.stations.outage,
+        label: 'Rower 04',
+        pm5Serial: 'DEMO-PM5-OUTAGE',
+        retiredAt: before.clock.now,
+      },
+    ]);
+  },
+  insertLayoutLine: (next) =>
+    expect(
+      next.stations.find((station) => station.stationId === ids.stations.east),
+    ).toMatchObject({ column: 3 }),
+  removeLayoutLine: (next) =>
+    expect(
+      next.stations.find((station) => station.stationId === ids.stations.east),
+    ).toMatchObject({ column: 1 }),
   setLayoutOrientation: (next) =>
     expect(next.layout.orientationLabel).toBe('Demo entrance on the left'),
   createClassType: (next) =>
@@ -682,7 +730,7 @@ const routeAssertions = {
     expect(
       next.classTypes.find((type) => type.classTypeId === ids.classTypes.sprint)
         ?.name,
-    ).toBe('Demo Sprint Updated');
+    ).toBe('Power Intervals Updated');
     expect(next.classes).toEqual(before.classes);
   },
   createWeeklyTemplate: (next) =>
@@ -696,7 +744,7 @@ const routeAssertions = {
       next.weeklyTemplates.find(
         (template) => template.templateId === ids.templates.weekA,
       )?.name,
-    ).toBe('Illustrative Week A Updated'),
+    ).toBe('Week A Updated'),
   deleteWeeklyTemplate: (next) =>
     expect(
       next.weeklyTemplates.some(
@@ -1013,7 +1061,9 @@ describe('validateAction', () => {
         ['maple', 'cedar', 'birch', 'moss', 'aspen', 'willow'].map((name) => ({
           kind: 'member',
           memberId: `member:${name}`,
-          email: `${name}@example.invalid`,
+          email: state.members.find(
+            (member) => member.memberId === `member:${name}`,
+          )!.verifiedEmail,
         })),
       );
       for (const record of notifications ?? []) {

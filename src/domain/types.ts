@@ -246,6 +246,13 @@ export interface Station extends GridPosition {
   readonly inService: boolean;
 }
 
+export interface RetiredStation {
+  readonly stationId: StationId;
+  readonly label: string;
+  readonly pm5Serial: string | null;
+  readonly retiredAt: UtcInstant;
+}
+
 export type StationUpdate = Partial<
   Pick<Station, 'label' | 'pm5Serial' | 'inService'>
 >;
@@ -602,6 +609,7 @@ export interface DemoState {
   readonly currentWaiverVersionId: WaiverVersionId | null;
   readonly waiverSignatures: readonly WaiverSignature[];
   readonly stations: readonly Station[];
+  readonly retiredStations: readonly RetiredStation[];
   readonly layout: StationLayout;
   readonly classTypes: readonly ClassType[];
   readonly weeklyTemplates: readonly WeeklyTemplate[];
@@ -668,6 +676,7 @@ export type IneligibilityReason =
   | 'classCompleted'
   | 'zeroCapacity'
   | 'stationOutOfService'
+  | 'stationHasActiveBookings'
   | 'alreadyBooked'
   | 'alreadyWaitlisted'
   | 'classNotFull'
@@ -825,6 +834,15 @@ export interface DemoActionPayloads {
     readonly updates: StationUpdate;
   };
   readonly placeStation: GridPosition & { readonly stationId: StationId };
+  readonly retireStation: { readonly stationId: StationId };
+  readonly insertLayoutLine: {
+    readonly axis: 'row' | 'column';
+    readonly index: number;
+  };
+  readonly removeLayoutLine: {
+    readonly axis: 'row' | 'column';
+    readonly index: number;
+  };
   readonly setLayoutOrientation: { readonly orientationLabel: string };
   readonly createClassType: { readonly classType: ClassType };
   readonly updateClassType: {

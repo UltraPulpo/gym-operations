@@ -1,10 +1,11 @@
 .button,
 .control {
   min-height: 2.75rem;
-  border: 1px solid #526675;
-  border-radius: 0.25rem;
+  border: 1px solid var(--border, #d0dbe4);
+  border-radius: 0.5rem;
   padding: 0.5rem 0.75rem;
   font: inherit;
+  font-size: 1rem;
 }
 
 .button {
@@ -14,7 +15,7 @@
 
 .primary {
   color: #ffffff;
-  background: #154d80;
+  background: var(--accent, #185b82);
 }
 
 .secondary {
@@ -47,11 +48,12 @@
 .field {
   display: grid;
   gap: 0.375rem;
-  margin-block: 1rem;
+  margin-block: 0.5rem;
 }
 
 .field label {
   font-weight: 600;
+  font-size: 0.9rem;
 }
 
 .control {
@@ -67,8 +69,10 @@
 
 .checkbox {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.5rem;
+  min-height: 2.75rem;
+  cursor: pointer;
 }
 
 .checkbox input {
@@ -108,7 +112,7 @@
 .table th,
 .table td {
   padding: 0.75rem;
-  border-bottom: 1px solid #697c8b;
+  border-bottom: 1px solid var(--border, #d0dbe4);
   text-align: left;
   vertical-align: top;
 }
@@ -124,7 +128,7 @@
 .badge {
   display: inline-block;
   border: 1px solid currentColor;
-  border-radius: 0.25rem;
+  border-radius: 0.5rem;
   padding: 0.125rem 0.5rem;
   font-weight: 600;
 }
@@ -156,9 +160,9 @@
 
 .alert {
   padding: 1rem;
-  border: 2px solid currentColor;
-  border-radius: 0.25rem;
-  margin-block: 1rem;
+  border: 1px solid currentColor;
+  border-radius: var(--radius, 0.75rem);
+  margin-block: 0.75rem;
 }
 
 .alertTitle {
@@ -206,4 +210,19 @@
 
 .dialogClose {
   margin-top: 1rem;
+}
+
+.button:not(:disabled):hover {
+  filter: brightness(0.95);
+}
+
+@media (max-width: 36rem) {
+  .dialog {
+    padding: 1rem;
+  }
+
+  .dialogActions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
 }

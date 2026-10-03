@@ -1,4 +1,11 @@
-import { act, render, screen, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { FIXTURE_IDS as ids } from '../../demo-fixtures';
@@ -10,6 +17,17 @@ import { StationLayout, StationsScreen } from './index';
 
 const admin: DemoActor = { kind: 'staff', staffId: ids.staff.admin };
 const member: DemoActor = { kind: 'member', memberId: ids.members.maple };
+
+function enterEditing() {
+  const edit = screen.queryByRole('button', { name: 'Edit layout' });
+  if (edit) fireEvent.click(edit);
+}
+
+function renderEditing(...args: Parameters<typeof renderWithDemoState>) {
+  const view = renderWithDemoState(...args);
+  enterEditing();
+  return view;
+}
 
 function cell(row: number, column: number) {
   return within(screen.getByRole('grid', { name: 'Station layout' })).getByRole(
@@ -24,6 +42,7 @@ function renderState(state: DemoState, ui = <StationsScreen />) {
   const result = render(
     <DemoStateContext.Provider value={store}>{ui}</DemoStateContext.Provider>,
   );
+  enterEditing();
   return { ...result, store, user };
 }
 
@@ -39,7 +58,7 @@ async function fill(
 
 describe('station management', () => {
   it('rejects a blank station update and empty destination without changing any state', async () => {
-    const { store, user } = renderWithDemoState(<StationsScreen />, {
+    const { store, user } = renderEditing(<StationsScreen />, {
       actor: admin,
     });
     const before = store.getSnapshot();
@@ -58,7 +77,7 @@ describe('station management', () => {
   });
 
   it('creates a station with label, data-only PM5, service status and coordinates', async () => {
-    const { store, user } = renderWithDemoState(<StationsScreen />, {
+    const { store, user } = renderEditing(<StationsScreen />, {
       actor: admin,
     });
     const before = store.getSnapshot().state;
@@ -82,7 +101,7 @@ describe('station management', () => {
   });
 
   it('rejects occupied creation and blank labels without any state mutation', async () => {
-    const { store, user } = renderWithDemoState(<StationsScreen />, {
+    const { store, user } = renderEditing(<StationsScreen />, {
       actor: admin,
     });
     const before = store.getSnapshot();
@@ -104,7 +123,7 @@ describe('station management', () => {
   });
 
   it('updates label and PM5, flags an outage without moving or cancelling bookings', async () => {
-    const { store, user } = renderWithDemoState(<StationsScreen />, {
+    const { store, user } = renderEditing(<StationsScreen />, {
       actor: admin,
     });
     const before = store.getSnapshot().state;
@@ -141,12 +160,14 @@ describe('station management', () => {
     ).toContain('stationOutOfService');
     expect(screen.getByText('Capacity: 2 in-service stations')).toBeVisible();
     expect(
-      screen.getAllByText('Station outage: staff review required').length,
+      screen.getAllByRole('button', {
+        name: /Station outage: staff review required/,
+      }).length,
     ).toBeGreaterThan(0);
   });
 
   it('shows zero capacity and review flags while preserving existing bookings', async () => {
-    const { store, user } = renderWithDemoState(<StationsScreen />, {
+    const { store, user } = renderEditing(<StationsScreen />, {
       actor: admin,
       scenarioId: 'scenario:service-unavailable',
     });
@@ -170,7 +191,7 @@ describe('station management', () => {
   });
 
   it('updates orientation and swaps via coordinate inputs without changing station metadata', async () => {
-    const { store, user } = renderWithDemoState(<StationsScreen />, {
+    const { store, user } = renderEditing(<StationsScreen />, {
       actor: admin,
     });
     await fill('Orientation label', 'Demo entrance on the left', user);
@@ -198,7 +219,7 @@ describe('station management', () => {
   });
 
   it('rejects negative and fractional coordinates without dispatching', async () => {
-    const { store, user } = renderWithDemoState(<StationsScreen />, {
+    const { store, user } = renderEditing(<StationsScreen />, {
       actor: admin,
     });
     const before = store.getSnapshot();
@@ -213,7 +234,7 @@ describe('station management', () => {
   });
 
   it('rejects stale form submission explicitly instead of overwriting newer state', async () => {
-    const { store, user } = renderWithDemoState(<StationsScreen />, {
+    const { store, user } = renderEditing(<StationsScreen />, {
       actor: admin,
     });
     await fill('Station label', 'Old form value', user);
@@ -232,11 +253,248 @@ describe('station management', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('demo state changed');
     expect(store.getSnapshot()).toBe(before);
   });
+
+  it('removes an idle station only after alertdialog confirmation', async () => {
+    const initial = createDemoTestState({ actor: admin });
+    const removable = {
+      stationId: 'station:idle-remove' as const,
+      label: 'Idle removable',
+      pm5Serial: 'PM5-IDLE',
+      inService: true,
+      row: 3,
+      column: 0,
+    };
+    const { store, user } = renderState({
+      ...initial,
+      stations: [...initial.stations, removable],
+    });
+
+    await user.selectOptions(
+      screen.getByLabelText('Station to edit'),
+      removable.stationId,
+    );
+    await user.click(
+      within(
+        screen.getByRole('region', { name: 'Admin station management' }),
+      ).getByRole('button', { name: 'Remove station' }),
+    );
+    expect(screen.getByRole('alertdialog')).toHaveTextContent('Idle removable');
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(store.getSnapshot().state.stations).toContainEqual(removable);
+
+    await user.click(screen.getByRole('button', { name: 'Remove station' }));
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'Remove station',
+      }),
+    );
+    expect(store.getSnapshot().state.stations).not.toContainEqual(removable);
+    expect(store.getSnapshot().state.retiredStations).toContainEqual({
+      stationId: removable.stationId,
+      label: removable.label,
+      pm5Serial: removable.pm5Serial,
+      retiredAt: initial.clock.now,
+    });
+    expect(screen.getByRole('status', { name: '' })).toHaveTextContent(
+      'Station removed.',
+    );
+  });
+
+  it('shows a blocked removal error when active bookings reference the station', async () => {
+    const { store, user } = renderEditing(<StationsScreen />, {
+      actor: admin,
+    });
+    await user.selectOptions(
+      screen.getByLabelText('Station to edit'),
+      ids.stations.outage,
+    );
+    const before = store.getSnapshot();
+    await user.click(screen.getByRole('button', { name: 'Remove station' }));
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'Remove station',
+      }),
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent(/active booking/i);
+    expect(store.getSnapshot()).toBe(before);
+  });
+
+  it('closes row and column removal confirmations after rejection so errors are reachable', async () => {
+    const { store, user } = renderEditing(<StationsScreen />, {
+      actor: admin,
+    });
+    const before = store.getSnapshot();
+    await user.click(
+      screen.getByRole('button', { name: 'Remove empty row/column' }),
+    );
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'Remove empty row/column',
+      }),
+    );
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(/only empty/i);
+    expect(store.getSnapshot()).toBe(before);
+  });
+
+  it('inserts and removes layout columns without changing bookings', async () => {
+    const { store, user } = renderEditing(<StationsScreen />, {
+      actor: admin,
+    });
+    const before = store.getSnapshot().state;
+    await user.selectOptions(screen.getByLabelText('Layout axis'), 'column');
+    await fill('Layout line index', '1', user);
+    await user.click(screen.getByRole('button', { name: 'Insert before' }));
+    expect(
+      store
+        .getSnapshot()
+        .state.stations.find(
+          (station) => station.stationId === ids.stations.east,
+        ),
+    ).toMatchObject({ column: 3 });
+    expect(store.getSnapshot().state.bookings).toBe(before.bookings);
+
+    await user.click(
+      screen.getByRole('button', { name: 'Remove empty row/column' }),
+    );
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'Remove empty row/column',
+      }),
+    );
+    expect(store.getSnapshot().state.stations).toEqual(before.stations);
+    expect(store.getSnapshot().state.bookings).toBe(before.bookings);
+  });
+
+  it('offers quick actions for inspected empty cells in edit mode', async () => {
+    const { store, user } = renderEditing(<StationsScreen />, {
+      actor: admin,
+    });
+    await user.click(cell(1, 2));
+    expect(
+      screen.getByRole('region', { name: 'Station details' }),
+    ).toHaveTextContent('Empty cell at row 0, column 1');
+    await user.click(
+      screen.getByRole('button', { name: 'Insert column left' }),
+    );
+    expect(
+      store
+        .getSnapshot()
+        .state.stations.find(
+          (station) => station.stationId === ids.stations.east,
+        ),
+    ).toMatchObject({ column: 3 });
+
+    await user.click(cell(1, 2));
+    await user.click(screen.getByRole('button', { name: 'Remove column 1' }));
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'Remove column 1',
+      }),
+    );
+    expect(
+      store
+        .getSnapshot()
+        .state.stations.find(
+          (station) => station.stationId === ids.stations.east,
+        ),
+    ).toMatchObject({ column: 2 });
+    await waitFor(() => expect(cell(1, 2)).toHaveFocus());
+  });
+
+  it('clears a pending pick and focuses the grid after retiring from station details', async () => {
+    const initial = createDemoTestState({ actor: admin });
+    const removable = {
+      stationId: 'station:idle-details-remove' as const,
+      label: 'Idle details removable',
+      pm5Serial: null,
+      inService: true,
+      row: 3,
+      column: 0,
+    };
+    const { store, user } = renderState({
+      ...initial,
+      stations: [...initial.stations, removable],
+    });
+    await user.click(cell(4, 1));
+    expect(
+      screen.getByRole('button', { name: 'Cancel placement' }),
+    ).toBeVisible();
+
+    await user.click(
+      within(screen.getByRole('region', { name: 'Station details' })).getByRole(
+        'button',
+        { name: 'Remove station' },
+      ),
+    );
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'Remove station',
+      }),
+    );
+
+    expect(store.getSnapshot().state.stations).not.toContainEqual(removable);
+    expect(
+      screen.queryByRole('button', { name: 'Cancel placement' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('status', { name: 'Layout interaction' }),
+    ).toHaveTextContent(/station removed/i);
+    expect(
+      within(screen.getByRole('grid')).queryByRole('button', { pressed: true }),
+    ).not.toBeInTheDocument();
+    await waitFor(() => expect(cell(4, 1)).toHaveFocus());
+    await user.click(cell(4, 1));
+    expect(screen.queryByText(/demo state changed/i)).not.toBeInTheDocument();
+  });
+
+  it('clears a pending pick and focuses management after retiring from the management form', async () => {
+    const initial = createDemoTestState({ actor: admin });
+    const removable = {
+      stationId: 'station:idle-management-remove' as const,
+      label: 'Idle management removable',
+      pm5Serial: null,
+      inService: true,
+      row: 3,
+      column: 0,
+    };
+    const { store, user } = renderState({
+      ...initial,
+      stations: [...initial.stations, removable],
+    });
+    await user.click(cell(4, 1));
+    await user.selectOptions(
+      screen.getByLabelText('Station to edit'),
+      removable.stationId,
+    );
+
+    await user.click(
+      within(
+        screen.getByRole('region', { name: 'Admin station management' }),
+      ).getByRole('button', { name: 'Remove station' }),
+    );
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'Remove station',
+      }),
+    );
+
+    expect(store.getSnapshot().state.stations).not.toContainEqual(removable);
+    expect(
+      screen.queryByRole('button', { name: 'Cancel placement' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('status', { name: 'Layout interaction' }),
+    ).toHaveTextContent(/station removed/i);
+    await waitFor(() =>
+      expect(screen.getByLabelText('Station to edit')).toHaveFocus(),
+    );
+  });
 });
 
 describe('keyboard layout placement', () => {
   it('swaps an in-service station with an outage without swapping service state, PM5 data or booking ownership', async () => {
-    const { store, user } = renderWithDemoState(<StationsScreen />, {
+    const { store, user } = renderEditing(<StationsScreen />, {
       actor: admin,
     });
     const before = store.getSnapshot().state;
@@ -261,14 +519,14 @@ describe('keyboard layout placement', () => {
     expect(cell(1, 3)).toHaveTextContent('Booked, checked in');
     expect(screen.getByText('Capacity: 3 in-service stations')).toBeVisible();
     expect(
-      screen.queryByRole('button', { pressed: true }),
+      within(screen.getByRole('grid')).queryByRole('button', { pressed: true }),
     ).not.toBeInTheDocument();
   });
 
   it.each([20, 100000, Number.MAX_SAFE_INTEGER])(
     'keeps coordinate %s sparse and navigable without changing metadata or bookings',
     async (position) => {
-      const { store, user } = renderWithDemoState(<StationsScreen />, {
+      const { store, user } = renderEditing(<StationsScreen />, {
         actor: admin,
       });
       const before = store.getSnapshot().state;
@@ -281,7 +539,7 @@ describe('keyboard layout placement', () => {
         column: position,
       });
       expect(store.getSnapshot().state.bookings).toBe(before.bookings);
-      expect(cell(position + 1, position + 1)).toHaveTextContent('Demo North');
+      expect(cell(position + 1, position + 1)).toHaveTextContent('Rower 01');
       expect(screen.getAllByRole('gridcell').length).toBeLessThan(100);
       const after = store.getSnapshot();
       cell(position + 1, position + 1).focus();
@@ -292,7 +550,7 @@ describe('keyboard layout placement', () => {
   );
 
   it('uses arrow navigation and Enter/Space to swap occupied cells, preserving every non-position field', async () => {
-    const { store, user } = renderWithDemoState(<StationsScreen />, {
+    const { store, user } = renderEditing(<StationsScreen />, {
       actor: admin,
     });
     const before = store.getSnapshot().state;
@@ -326,7 +584,7 @@ describe('keyboard layout placement', () => {
   });
 
   it('moves into an empty cell and supports all arrows with boundary-safe focus', async () => {
-    const { store, user } = renderWithDemoState(<StationsScreen />, {
+    const { store, user } = renderEditing(<StationsScreen />, {
       actor: admin,
     });
     const before = store.getSnapshot().state;
@@ -345,7 +603,7 @@ describe('keyboard layout placement', () => {
   });
 
   it('cancels a pick with Escape and never mutates on navigation, empty-cell activation or cancellation', async () => {
-    const { store, user } = renderWithDemoState(<StationsScreen />, {
+    const { store, user } = renderEditing(<StationsScreen />, {
       actor: admin,
     });
     const before = store.getSnapshot();
@@ -356,12 +614,12 @@ describe('keyboard layout placement', () => {
       screen.getByRole('status', { name: 'Layout interaction' }),
     ).toHaveTextContent(/empty cell/i);
     expect(
-      screen.queryByRole('button', { pressed: true }),
+      within(screen.getByRole('grid')).queryByRole('button', { pressed: true }),
     ).not.toBeInTheDocument();
   });
 
   it('rejects a stale keyboard drop with no failed-action mutation', async () => {
-    const { store, user } = renderWithDemoState(<StationsScreen />, {
+    const { store, user } = renderEditing(<StationsScreen />, {
       actor: admin,
     });
     cell(1, 1).focus();
@@ -381,10 +639,10 @@ describe('keyboard layout placement', () => {
 
 describe('role-aware class overlays', () => {
   it('removes authorized names and pending picks immediately when switching to a member persona', async () => {
-    const { store, user, container } = renderWithDemoState(<StationsScreen />, {
+    const { store, user, container } = renderEditing(<StationsScreen />, {
       actor: admin,
     });
-    expect(cell(1, 1)).toHaveTextContent('Fictional Maple');
+    expect(cell(1, 1)).toHaveAccessibleName(/Maya Chen/);
     cell(1, 1).focus();
     await user.keyboard('{Enter}');
     act(() => {
@@ -409,13 +667,13 @@ describe('role-aware class overlays', () => {
   });
 
   it('renders textual states, icons and authorized staff names from the selected overlay', async () => {
-    renderWithDemoState(<StationsScreen />, { actor: admin });
+    renderEditing(<StationsScreen />, { actor: admin });
     expect(cell(1, 1)).toHaveTextContent('Booked, checked in');
     expect(cell(2, 1)).toHaveTextContent('Booked, not checked in');
     expect(cell(2, 3)).toHaveTextContent('Available');
     expect(cell(1, 3)).toHaveTextContent('Out of service');
-    expect(cell(1, 1)).toHaveTextContent('Fictional Maple');
-    expect(cell(1, 3)).toHaveTextContent('Fictional Moss');
+    expect(cell(1, 1)).toHaveAccessibleName(/Maya Chen/);
+    expect(cell(1, 3)).toHaveAccessibleName(/Avery Bennett/);
     expect(cell(1, 3)).toHaveAccessibleName(
       /Station outage: staff review required/,
     );
@@ -470,7 +728,7 @@ describe('role-aware class overlays', () => {
   });
 
   it('selects future overlays and defaults to the current class after the clock advances', async () => {
-    const { store, user } = renderWithDemoState(<StationsScreen />, {
+    const { store, user } = renderEditing(<StationsScreen />, {
       actor: admin,
     });
     expect(screen.getByLabelText('Class overlay')).toHaveValue(
@@ -480,7 +738,7 @@ describe('role-aware class overlays', () => {
       screen.getByLabelText('Class overlay'),
       ids.classes.full,
     );
-    expect(cell(2, 3)).toHaveTextContent('Fictional Birch');
+    expect(cell(2, 3)).toHaveAccessibleName(/Sam Patel/);
     const before = store.getSnapshot();
     expect(before.hasUnsavedEdits).toBe(false);
     act(() => {
@@ -493,7 +751,7 @@ describe('role-aware class overlays', () => {
   });
 
   it('never renders any assigned name or private member data for members, and has no editing controls', async () => {
-    const { store, container, user } = renderWithDemoState(<StationsScreen />, {
+    const { store, container, user } = renderEditing(<StationsScreen />, {
       actor: member,
     });
     const before = store.getSnapshot();
@@ -513,7 +771,7 @@ describe('role-aware class overlays', () => {
     expect(cell(1, 1)).toHaveTextContent('Booked, checked in');
     expect(
       screen.getByRole('status', { name: 'Layout interaction' }),
-    ).toHaveTextContent(/read-only/i);
+    ).toHaveTextContent(/Layout positions unchanged/i);
     expect(
       within(screen.getByLabelText('Class overlay')).queryByRole('option', {
         name: /draft/i,
@@ -524,11 +782,11 @@ describe('role-aware class overlays', () => {
   it.each([ids.staff.frontDesk, ids.staff.coach])(
     'keeps non-admin staff placement read-only for %s',
     async (staffId) => {
-      const { store, user } = renderWithDemoState(<StationsScreen />, {
+      const { store, user } = renderEditing(<StationsScreen />, {
         actor: { kind: 'staff', staffId },
       });
       const before = store.getSnapshot();
-      expect(cell(1, 1)).toHaveTextContent('Fictional Maple');
+      expect(cell(1, 1)).toHaveAccessibleName(/Maya Chen/);
       expect(screen.queryByLabelText('Station label')).not.toBeInTheDocument();
       cell(1, 1).focus();
       await user.keyboard('{Enter}{ArrowDown}{Enter}');
@@ -538,14 +796,14 @@ describe('role-aware class overlays', () => {
 
   it('limits coach class choices and rejects an explicitly requested out-of-scope overlay without names', () => {
     const actor: DemoActor = { kind: 'staff', staffId: ids.staff.coach };
-    const { unmount } = renderWithDemoState(<StationsScreen />, { actor });
+    const { unmount } = renderEditing(<StationsScreen />, { actor });
     expect(
       Array.from(
         screen.getByLabelText('Class overlay').querySelectorAll('option'),
       ).map((option) => option.value),
     ).toEqual([ids.classes.checkIn, ids.classes.laterRelease]);
     unmount();
-    const { container } = renderWithDemoState(
+    const { container } = renderEditing(
       <StationLayout classId={ids.classes.full} />,
       { actor },
     );
@@ -553,11 +811,11 @@ describe('role-aware class overlays', () => {
       /not available to this persona/i,
     );
     expect(screen.queryByRole('grid')).not.toBeInTheDocument();
-    expect(container).not.toHaveTextContent('Fictional Birch');
+    expect(container).not.toHaveTextContent('Sam Patel');
   });
 
   it('exports a read-only reusable layout even for an admin unless editing is explicitly enabled', async () => {
-    const { store, user } = renderWithDemoState(
+    const { store, user } = renderEditing(
       <StationLayout classId={ids.classes.checkIn} />,
       { actor: admin },
     );
@@ -582,7 +840,7 @@ describe('role-aware class overlays', () => {
 
 describe('unavailable layouts', () => {
   it('discards an active pick when layout data becomes stale and leaves the replacement snapshot unchanged', async () => {
-    const { store, user } = renderWithDemoState(<StationsScreen />, {
+    const { store, user } = renderEditing(<StationsScreen />, {
       actor: admin,
     });
     cell(1, 1).focus();
@@ -600,6 +858,7 @@ describe('unavailable layouts', () => {
     const afterLoad = store.getSnapshot();
     expect(screen.getByRole('alert')).toHaveTextContent(/stale/i);
     expect(screen.queryByRole('grid')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Edit layout' }));
     await user.click(screen.getByRole('button', { name: 'Place station' }));
     expect(store.getSnapshot()).toBe(afterLoad);
   });
@@ -610,7 +869,7 @@ describe('unavailable layouts', () => {
   ] as const)(
     'disables map-based operations with an explicit reason for %s',
     async (scenarioId, reason) => {
-      const { store, user } = renderWithDemoState(<StationsScreen />, {
+      const { store, user } = renderEditing(<StationsScreen />, {
         actor: admin,
         scenarioId,
       });
@@ -654,7 +913,7 @@ describe('unavailable layouts', () => {
 
 describe('base schematic without a class overlay', () => {
   it('denies an outstanding invitation with no scoped classes without exposing the base schematic or station data', () => {
-    const { store, container } = renderWithDemoState(<StationsScreen />, {
+    const { store, container } = renderEditing(<StationsScreen />, {
       actor: admin,
     });
     expect(screen.getByRole('grid')).toBeInTheDocument();
@@ -728,7 +987,7 @@ describe('base schematic without a class overlay', () => {
   }
 
   it('keeps the current base arrangement and real Admin creation, placement and orientation usable after all classes end', async () => {
-    const { store, user, container } = renderWithDemoState(<StationsScreen />, {
+    const { store, user, container } = renderEditing(<StationsScreen />, {
       actor: admin,
     });
     advancePastClasses(store);
@@ -799,10 +1058,9 @@ describe('base schematic without a class overlay', () => {
   ] satisfies DemoActor[])(
     'keeps the base schematic private and placement read-only for $kind $staffId',
     async (actor) => {
-      const { store, user, container } = renderWithDemoState(
-        <StationsScreen />,
-        { actor },
-      );
+      const { store, user, container } = renderEditing(<StationsScreen />, {
+        actor,
+      });
       advancePastClasses(store);
       const before = store.getSnapshot();
       expect(screen.getByText(/Base station arrangement/)).toBeVisible();
@@ -834,12 +1092,12 @@ describe('base schematic without a class overlay', () => {
       expect(store.getSnapshot()).toBe(before);
       expect(
         screen.getByRole('status', { name: 'Layout interaction' }),
-      ).toHaveTextContent(/read-only/i);
+      ).toHaveTextContent(/Layout positions unchanged/i);
     },
   );
 
   it('keeps the reusable base layout read-only even for an Admin without the editing opt-in', async () => {
-    const { store, user } = renderWithDemoState(<StationLayout />, {
+    const { store, user } = renderEditing(<StationLayout />, {
       actor: admin,
     });
     advancePastClasses(store);
@@ -854,7 +1112,7 @@ describe('base schematic without a class overlay', () => {
   });
 
   it('discards a base pick when switching from Admin to a member without exposing names or changing positions', async () => {
-    const { store, user, container } = renderWithDemoState(<StationsScreen />, {
+    const { store, user, container } = renderEditing(<StationsScreen />, {
       actor: admin,
     });
     advancePastClasses(store);
@@ -868,7 +1126,7 @@ describe('base schematic without a class overlay', () => {
     });
     const before = store.getSnapshot();
     expect(
-      screen.queryByRole('button', { pressed: true }),
+      within(screen.getByRole('grid')).queryByRole('button', { pressed: true }),
     ).not.toBeInTheDocument();
     for (const record of before.state.members) {
       expect(container).not.toHaveTextContent(record.displayName);
@@ -879,7 +1137,7 @@ describe('base schematic without a class overlay', () => {
   });
 
   it('does not replace an explicitly requested expired class overlay with an actionable base map', () => {
-    const { store } = renderWithDemoState(
+    const { store } = renderEditing(
       <StationLayout classId={ids.classes.checkIn} editable />,
       { actor: admin },
     );
@@ -899,7 +1157,7 @@ describe('base schematic without a class overlay', () => {
   ] as const)(
     'does not mistake %s for a current base when no classes remain',
     async (scenarioId, reason) => {
-      const { store, user } = renderWithDemoState(<StationsScreen />, {
+      const { store, user } = renderEditing(<StationsScreen />, {
         actor: admin,
         scenarioId,
       });

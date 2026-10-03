@@ -1,6 +1,7 @@
 name: Static demo checks and Pages
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches: [main]
@@ -8,15 +9,14 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: static-demo-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   checks:
     name: Quality and browser checks
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    concurrency:
+      group: static-demo-checks-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
     env:
       PAGES_BASE_PATH: /gym-operations/
     steps:
@@ -42,11 +42,11 @@ jobs:
       - name: Pull request browser smoke
         if: github.event_name == 'pull_request'
         run: npx playwright test --grep '@smoke'
-      - name: Default branch full browser suite
-        if: github.event_name == 'push'
+      - name: Publication full browser suite
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         run: npx playwright test
       - name: Upload checked static Pages artifact
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/'))) }}
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
@@ -54,9 +54,12 @@ jobs:
   deploy:
     name: Publish static demo
     needs: checks
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.checks.result == 'success' }}
+    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/'))) && needs.checks.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    concurrency:
+      group: static-demo-pages
+      cancel-in-progress: false
     permissions:
       contents: read
       pages: write

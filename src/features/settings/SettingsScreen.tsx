@@ -254,7 +254,7 @@ export function SettingsScreen() {
 
   return (
     <section className={styles.screen} aria-labelledby="settings-heading">
-      <h1 id="settings-heading">Illustrative Admin settings</h1>
+      <h1 id="settings-heading">Admin settings</h1>
       <p>
         Non-operational demo: changes affect in-memory state only. Refresh
         resets the demo; settings are not persisted.

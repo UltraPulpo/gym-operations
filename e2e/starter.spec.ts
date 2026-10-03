@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
+import { openControls, openNavigation } from './workspace';
 
 test('built demo loads and resets ephemeral state on a repository-base hash refresh', async ({
   page,
@@ -17,8 +18,9 @@ test('built demo loads and resets ephemeral state on a repository-base hash refr
     page.getByRole('heading', { name: 'Schedule', exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText('SIMULATED DEMO - NOT FOR OPERATIONS', { exact: true }),
+    page.getByText('Demo · resets on refresh', { exact: true }),
   ).toBeVisible();
+  await openControls(page);
   await expect(
     page.getByText(/Demo timezone: America\/Los_Angeles.*illustrative/),
   ).toBeVisible();
@@ -27,7 +29,7 @@ test('built demo loads and resets ephemeral state on a repository-base hash refr
     '2026-10-05T15:46:00Z',
   );
   await page
-    .getByLabel('Fictional persona')
+    .getByLabel('Persona', { exact: true })
     .selectOption('staff:demo-front-desk');
   await expect(
     page.getByText(/Schedule is read-only for this persona/),
@@ -37,7 +39,7 @@ test('built demo loads and resets ephemeral state on a repository-base hash refr
     page.getByRole('heading', { name: 'Schedule', exact: true }),
   ).toBeVisible();
   await expect(page).toHaveURL(`${baseURL}#/schedule`);
-  await expect(page.getByLabel('Fictional persona')).toHaveValue(
+  await expect(page.getByLabel('Persona', { exact: true })).toHaveValue(
     'staff:demo-admin',
   );
   await expect(page.getByLabel('Frozen demo clock')).toHaveText(
@@ -55,10 +57,10 @@ test('unknown hash routes retain the boundary and offer keyboard navigation', as
   await expect(
     page.getByRole('heading', { name: 'Page not found' }),
   ).toBeFocused();
-  await expect(page.getByText(/NOT FOR OPERATIONS/)).toBeVisible();
+  await expect(page.getByText('Demo · resets on refresh')).toBeVisible();
   await page.getByRole('link', { name: 'Skip to demo workspace' }).focus();
   await page.keyboard.press('Tab');
-  await expect(page.getByLabel('Fictional persona')).toBeFocused();
+  await expect(page.locator('summary')).toBeFocused();
   await page.getByRole('link', { name: 'Demo overview', exact: true }).focus();
   await expect(page.getByRole('link', { name: 'Demo overview' })).toBeFocused();
   await page.keyboard.press('Enter');
@@ -79,7 +81,7 @@ test('composed shell stays readable with no detected axe violations at desktop, 
       page.getByRole('heading', { name: 'Demo overview' }),
     ).toBeVisible();
     await expect(
-      page.getByText('SIMULATED DEMO - NOT FOR OPERATIONS', { exact: true }),
+      page.getByText('Demo · resets on refresh', { exact: true }),
     ).toBeVisible();
     expect(
       await page.locator('html').evaluate((element) => element.scrollWidth),
@@ -105,20 +107,21 @@ test('baseline navigation mounts every real feature screen and retains the curre
   const screens = [
     ['Staff access', 'Staff access', '/staff'],
     ['Members', 'Members and invitations', '/members'],
-    ['Invitations', 'Simulated invitation acceptance', '/invitations'],
-    ['Waivers', 'Fictional waivers', '/waivers'],
+    ['Invitations', 'Invitation acceptance', '/invitations'],
+    ['Waivers', 'Waivers', '/waivers'],
     ['Stations', 'Stations and layout', '/stations'],
     ['Classes', 'Class types', '/classes'],
     ['Schedule', 'Schedule', '/schedule'],
     ['Bookings', 'Bookings and waitlists', '/bookings'],
     ['Attendance', 'Attendance and outage roster', '/attendance'],
-    ['Notifications', 'Simulated notifications', '/notifications'],
+    ['Notifications', 'Notifications', '/notifications'],
     ['Coaches', 'Coach profiles', '/coaches'],
-    ['Settings', 'Illustrative Admin settings', '/settings'],
+    ['Settings', 'Admin settings', '/settings'],
   ];
   for (const width of [1280, 768, 390]) {
     await page.setViewportSize({ width, height: 900 });
     for (const [label, heading, path] of screens) {
+      await openNavigation(page);
       await page
         .getByRole('navigation', { name: 'Demo navigation' })
         .getByRole('link', { name: label, exact: true })
@@ -127,9 +130,10 @@ test('baseline navigation mounts every real feature screen and retains the curre
       await expect(
         page.getByRole('heading', { name: heading, exact: true }),
       ).toBeFocused();
-      const notice = page.getByText('SIMULATED DEMO - NOT FOR OPERATIONS', {
+      const notice = page.getByText('Demo · resets on refresh', {
         exact: true,
       });
+      await expect(notice).toHaveCount(1);
       await expect(notice).toBeVisible();
       const bounds = await notice.boundingBox();
       expect(bounds).not.toBeNull();
@@ -137,7 +141,7 @@ test('baseline navigation mounts every real feature screen and retains the curre
       expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(
         page.viewportSize()!.height,
       );
-      await expect(page.getByLabel('Fictional persona')).toHaveValue(
+      await expect(page.getByLabel('Persona', { exact: true })).toHaveValue(
         'staff:demo-admin',
       );
       expect(

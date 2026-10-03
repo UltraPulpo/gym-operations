@@ -200,7 +200,7 @@ export function CheckboxField({
   const ids = useFieldIds(id, hint, error, describedBy);
   return (
     <div className={styles.field}>
-      <div className={styles.checkbox}>
+      <label htmlFor={ids.id} className={styles.checkbox}>
         <input
           {...props}
           type="checkbox"
@@ -209,8 +209,8 @@ export function CheckboxField({
           aria-describedby={ids.describedBy}
           aria-invalid={error ? true : invalid}
         />
-        <label htmlFor={ids.id}>{label}</label>
-      </div>
+        {label}
+      </label>
       <FieldFeedback {...ids} hint={hint} error={error} />
     </div>
   );

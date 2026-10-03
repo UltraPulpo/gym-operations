@@ -124,8 +124,8 @@ function WaiverWorkspace() {
     prepareConfirmation(
       'publish',
       { type: 'publishWaiver', payload: { waiverVersionId } },
-      `Publish fictional version ${versionNumber}? Existing bookings and signatures remain. Members must sign the new current version before new bookings or check-in. This is not a legal publication.`,
-      `Published fictional waiver version ${versionNumber}.`,
+      `Publish version ${versionNumber}? Existing bookings and signatures remain. Members must sign the new current version before new bookings or check-in. This is not a legal publication.`,
+      `Published waiver version ${versionNumber}.`,
     );
   }
 
@@ -170,7 +170,7 @@ function WaiverWorkspace() {
 
   return (
     <section className={styles.screen} aria-labelledby="waivers-title">
-      <h1 id="waivers-title">Fictional waivers</h1>
+      <h1 id="waivers-title">Waivers</h1>
       <p className={styles.notice}>
         Fictional, non-legal simulation only. Text, typed names and timestamps
         are not legal evidence or credentials. Use fictional names and text; do
@@ -191,7 +191,7 @@ function WaiverWorkspace() {
             className={styles.panel}
             aria-labelledby="current-waiver-title"
           >
-            <h2 id="current-waiver-title">Current fictional waiver</h2>
+            <h2 id="current-waiver-title">Current waiver</h2>
             {current.success ? (
               <>
                 <h3>Version {current.value.version}</h3>
@@ -210,10 +210,10 @@ function WaiverWorkspace() {
           </section>
           {canManage && (
             <section className={styles.panel} aria-labelledby="versions-title">
-              <h2 id="versions-title">Admin fictional versions</h2>
+              <h2 id="versions-title">Admin versions</h2>
               <form
                 noValidate
-                aria-label="Create fictional waiver draft"
+                aria-label="Create waiver draft"
                 onSubmit={(event) => {
                   event.preventDefault();
                   setMessage('');
@@ -234,9 +234,7 @@ function WaiverWorkspace() {
                     setFailure({ source: 'create', error: result.error });
                     return;
                   }
-                  setMessage(
-                    `Created fictional draft version ${Number(version)}.`,
-                  );
+                  setMessage(`Created draft version ${Number(version)}.`);
                   setText('');
                   setVersion(
                     String(Math.max(nextVersion, Number(version) + 1)),
@@ -254,7 +252,7 @@ function WaiverWorkspace() {
                   error={fieldError('create', 'version')}
                 />
                 <TextareaField
-                  label="Fictional waiver text"
+                  label="Waiver text"
                   required
                   value={text}
                   onChange={(event) => setText(event.target.value)}
@@ -264,7 +262,7 @@ function WaiverWorkspace() {
                 <Button type="submit">Create draft</Button>
               </form>
               <DataTable
-                caption="Fictional waiver versions"
+                caption="Waiver versions"
                 rows={state.waivers
                   .slice()
                   .sort((left, right) => right.version - left.version)}
@@ -277,7 +275,7 @@ function WaiverWorkspace() {
                   },
                   {
                     key: 'text',
-                    header: 'Fictional text',
+                    header: 'Waiver text',
                     render: (waiver) => (
                       <span className={styles.waiverText}>{waiver.text}</span>
                     ),
@@ -362,11 +360,11 @@ function WaiverWorkspace() {
                 <Alert tone="warning">
                   {compliance.status === 'unavailable'
                     ? compliance.error.message
-                    : 'New bookings and check-in are blocked until this member signs the current fictional waiver. Existing bookings and old signatures are preserved.'}
+                    : 'New bookings and check-in are blocked until this member signs the current waiver. Existing bookings and old signatures are preserved.'}
                 </Alert>
               )}
               <DataTable
-                caption="Fictional signature history"
+                caption="Signature history"
                 rows={signatures}
                 getRowKey={(signature) => signature.signatureId}
                 emptyMessage="No simulated signatures for this member."
@@ -389,7 +387,7 @@ function WaiverWorkspace() {
                   },
                   {
                     key: 'name',
-                    header: 'Fictional typed name',
+                    header: 'Typed name',
                     render: (signature) => signature.typedName,
                   },
                   {
@@ -403,7 +401,7 @@ function WaiverWorkspace() {
                   },
                   {
                     key: 'text',
-                    header: 'Signed fictional text',
+                    header: 'Signed waiver text',
                     render: (signature) => (
                       <span className={styles.waiverText}>
                         {signature.waiver?.text ??
@@ -416,7 +414,7 @@ function WaiverWorkspace() {
               {canSign && compliance.status !== 'current' && (
                 <form
                   noValidate
-                  aria-label="Sign fictional waiver"
+                  aria-label="Sign waiver"
                   onSubmit={(event) => {
                     event.preventDefault();
                     if (!current.success) {
@@ -434,13 +432,13 @@ function WaiverWorkspace() {
                           typedName,
                         },
                       },
-                      `Record the fictional typed name "${typedName}" for version ${current.value.version} at ${demo.now} (UTC)? This simulated signature is not legal evidence.`,
-                      'Recorded simulated signature for the current fictional waiver.',
+                      `Record the typed name "${typedName}" for version ${current.value.version} at ${demo.now} (UTC)? This simulated signature is not legal evidence.`,
+                      'Recorded simulated signature for the current waiver.',
                     );
                   }}
                 >
                   <InputField
-                    label="Fictional typed name"
+                    label="Typed name"
                     required
                     value={typedName}
                     onChange={(event) => setTypedName(event.target.value)}
@@ -448,7 +446,7 @@ function WaiverWorkspace() {
                     error={fieldError('sign', 'typedName')}
                   />
                   <Button type="submit" disabled={!current.success}>
-                    Sign current fictional waiver
+                    Sign current waiver
                   </Button>
                 </form>
               )}
@@ -490,13 +488,13 @@ function WaiverWorkspace() {
             open={pending !== undefined}
             title={
               pending?.source === 'publish'
-                ? 'Publish fictional waiver?'
-                : 'Record fictional signature?'
+                ? 'Publish waiver?'
+                : 'Record signature?'
             }
             description={pending?.description ?? ''}
             confirmLabel={
               pending?.source === 'publish'
-                ? 'Publish fictional version'
+                ? 'Publish version'
                 : 'Record simulated signature'
             }
             onConfirm={confirm}

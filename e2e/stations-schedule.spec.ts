@@ -1,3 +1,4 @@
+import { openControls, openNavigation, editLayout } from './workspace';
 import { expect, test } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
 
@@ -19,6 +20,7 @@ const card = (page: Page, id: string) =>
   workspace(page).getByRole('article', { name: `Class ${id}`, exact: true });
 
 async function navigate(page: Page, name: string) {
+  await openNavigation(page);
   await page
     .getByRole('navigation', { name: 'Demo navigation' })
     .getByRole('link', { name, exact: true })
@@ -26,6 +28,7 @@ async function navigate(page: Page, name: string) {
   await expect(
     workspace(page).getByRole('heading', { level: 1 }),
   ).toBeFocused();
+  if (name === 'Stations') await editLayout(page);
 }
 
 async function placeWithKeyboard(
@@ -107,14 +110,16 @@ async function bookingSnapshot(page: Page) {
 
 test.beforeEach(async ({ page, baseURL }) => {
   await page.goto(`${baseURL}#/stations`);
+  await openControls(page);
+  await editLayout(page);
   await expect(page.getByLabel('Frozen demo clock')).toHaveText(
     '2026-10-05T15:45:00Z',
   );
-  await expect(page.getByLabel('Fictional persona')).toHaveValue(
+  await expect(page.getByLabel('Persona', { exact: true })).toHaveValue(
     'staff:demo-admin',
   );
   await expect(
-    page.getByText('SIMULATED DEMO - NOT FOR OPERATIONS', { exact: true }),
+    page.getByText('Demo · resets on refresh', { exact: true }),
   ).toBeVisible();
 });
 
@@ -156,9 +161,9 @@ test('keyboard grid moves and occupied swaps change positions only; Escape cance
     'Space',
     'Enter',
   );
-  await expect(cell(page, 1, 2)).toContainText('Demo North');
+  await expect(cell(page, 1, 2)).toContainText('Rower 01');
   await expect(cell(page, 1, 2)).toContainText('Booked, checked in');
-  await expect(cell(page, 1, 2)).toContainText('Fictional Maple');
+  await expect(cell(page, 1, 2)).toHaveAccessibleName(/Maya Chen/);
   await expect(cell(page, 1, 1)).toContainText('Empty cell');
   await expect(cell(page, 1, 2)).toBeFocused();
 
@@ -169,11 +174,11 @@ test('keyboard grid moves and occupied swaps change positions only; Escape cance
     'Enter',
     'Space',
   );
-  await expect(cell(page, 1, 3)).toContainText('Demo North');
+  await expect(cell(page, 1, 3)).toContainText('Rower 01');
   await expect(cell(page, 1, 3)).toContainText('Booked, checked in');
-  await expect(cell(page, 1, 2)).toContainText('Demo Outage');
+  await expect(cell(page, 1, 2)).toContainText('Rower 04');
   await expect(cell(page, 1, 2)).toContainText('Out of service');
-  await expect(cell(page, 1, 2)).toContainText('Fictional Moss');
+  await expect(cell(page, 1, 2)).toHaveAccessibleName(/Avery Bennett/);
   await expect(cell(page, 1, 3)).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(cell(page, 2, 3)).toBeFocused();
@@ -196,8 +201,9 @@ test('keyboard grid moves and occupied swaps change positions only; Escape cance
 });
 
 async function persona(page: Page, value: string) {
-  await page.getByLabel('Fictional persona').selectOption(value);
-  await expect(page.getByLabel('Fictional persona')).toHaveValue(value);
+  await page.getByLabel('Persona', { exact: true }).selectOption(value);
+  await expect(page.getByLabel('Persona', { exact: true })).toHaveValue(value);
+  if (new URL(page.url()).hash === '#/stations') await editLayout(page);
 }
 
 async function scenario(page: Page, name: string, instant: string) {
@@ -233,7 +239,7 @@ async function createDraft(
   page: Page,
   date: string,
   time: string,
-  type = 'Demo Sprint (30 min)',
+  type = 'Power Intervals (30 min)',
 ) {
   await page.getByLabel('Class to edit', { exact: true }).selectOption('');
   await page.getByLabel('Class date', { exact: true }).fill(date);
@@ -267,7 +273,7 @@ async function saveTemplate(
   await page.getByLabel('Entry 1 weekday').selectOption(weekday);
   await page.getByLabel('Entry 1 time', { exact: true }).fill(time);
   await page.getByLabel('Entry 1 class type').selectOption({
-    label: 'Demo Sprint (30 min)',
+    label: 'Power Intervals (30 min)',
   });
   await page
     .getByRole('button', { name: 'Save template', exact: true })
@@ -320,6 +326,85 @@ async function notificationSnapshot(page: Page) {
   return { rows, ids };
 }
 
+test('admin removes an idle station after confirmation without changing bookings @stations', async ({
+  page,
+}) => {
+  await page.getByLabel('New station label', { exact: true }).fill('Idle E2E');
+  await page
+    .getByLabel('New PM5 association', { exact: true })
+    .fill('PM5-IDLE-E2E');
+  await page.getByRole('button', { name: 'Create station' }).click();
+  await expect(workspace(page).getByText('Station change saved')).toBeVisible();
+  const beforeRoster = await bookingSnapshot(page);
+  await navigate(page, 'Stations');
+  await page
+    .getByLabel('Station to edit')
+    .selectOption('station:demo-created-1');
+  await page.getByRole('button', { name: 'Remove station' }).click();
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toContainText('Idle E2E');
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByLabel('Station to edit')).toContainText('Idle E2E');
+  await page.getByRole('button', { name: 'Remove station' }).click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Remove station' })
+    .click();
+  await expect(workspace(page).getByText('Station removed.')).toBeVisible();
+  await expect(page.getByLabel('Station to edit')).not.toContainText(
+    'Idle E2E',
+  );
+  expect(await bookingSnapshot(page)).toEqual(beforeRoster);
+});
+
+test('admin cannot remove a station with active bookings @stations', async ({
+  page,
+}) => {
+  const beforeRoster = await bookingSnapshot(page);
+  await navigate(page, 'Stations');
+  await page.getByLabel('Station to edit').selectOption('station:demo-outage');
+  await page.getByRole('button', { name: 'Remove station' }).click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Remove station' })
+    .click();
+  await expect(workspace(page).getByRole('alert')).toContainText(
+    /active booking/i,
+  );
+  await expect(page.getByLabel('Station to edit')).toContainText('Rower 04');
+  expect(await bookingSnapshot(page)).toEqual(beforeRoster);
+});
+
+test('admin removes an empty column to close a layout gap @stations', async ({
+  page,
+}) => {
+  const beforeRoster = await bookingSnapshot(page);
+  await navigate(page, 'Stations');
+  await page.getByLabel('Layout axis', { exact: true }).selectOption('column');
+  await page.getByLabel('Layout line index').fill('1');
+  await page.getByRole('button', { name: 'Remove empty row/column' }).click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Remove empty row/column' })
+    .click();
+  await expect(cell(page, 2, 2)).toContainText('Rower 03');
+  await expect(cell(page, 2, 3)).toContainText('Empty cell');
+  expect(await bookingSnapshot(page)).toEqual(beforeRoster);
+});
+
+test('admin inserts a column before existing stations without moving bookings @stations', async ({
+  page,
+}) => {
+  const beforeRoster = await bookingSnapshot(page);
+  await navigate(page, 'Stations');
+  await page.getByLabel('Layout axis', { exact: true }).selectOption('column');
+  await page.getByLabel('Layout line index').fill('1');
+  await page.getByRole('button', { name: 'Insert before' }).click();
+  await expect(cell(page, 2, 4)).toContainText('Rower 03');
+  await expect(cell(page, 2, 3)).toContainText('Empty cell');
+  expect(await bookingSnapshot(page)).toEqual(beforeRoster);
+});
+
 async function expectNotifications(
   page: Page,
   before: Awaited<ReturnType<typeof notificationSnapshot>>,
@@ -364,10 +449,10 @@ test('staff text and icon states remain anonymous and read-only for members @sta
   page,
 }) => {
   const states = [
-    [1, 1, 'Booked, checked in', '[x]', 'Fictional Maple'],
-    [2, 1, 'Booked, not checked in', '...', 'Fictional Cedar'],
+    [1, 1, 'Booked, checked in', '[x]', 'Maya Chen'],
+    [2, 1, 'Booked, not checked in', '...', 'Jordan Brooks'],
     [2, 3, 'Available', '+', ''],
-    [1, 3, 'Out of service', '!', 'Fictional Moss'],
+    [1, 3, 'Out of service', '!', 'Avery Bennett'],
   ] as const;
   for (const [row, column, state, icon, name] of states) {
     await expect(cell(page, row, column)).toContainText(state);
@@ -377,7 +462,10 @@ test('staff text and icon states remain anonymous and read-only for members @sta
     await expect(
       cell(page, row, column).locator('[aria-hidden="true"]'),
     ).toHaveText(icon);
-    if (name) await expect(cell(page, row, column)).toContainText(name);
+    if (name)
+      await expect(cell(page, row, column)).toHaveAccessibleName(
+        new RegExp(name),
+      );
   }
   await expect(cell(page, 1, 3)).toHaveAccessibleName(
     /Station outage: staff review required/,
@@ -386,7 +474,7 @@ test('staff text and icon states remain anonymous and read-only for members @sta
   expect(overlayIds).not.toContain('class:demo-history');
   expect(overlayIds).not.toContain('class:demo-cancelled');
   await page.getByLabel('Class overlay').selectOption(classes.full);
-  await expect(cell(page, 2, 3)).toContainText('Fictional Birch');
+  await expect(cell(page, 2, 3)).toHaveAccessibleName(/Sam Patel/);
 
   await persona(page, 'member:maple');
   await expect(page.getByLabel('Class overlay')).toHaveValue(classes.morning);
@@ -405,7 +493,7 @@ test('staff text and icon states remain anonymous and read-only for members @sta
     page.getByRole('status', { name: 'Layout interaction' }),
   ).toContainText('Read-only');
   await expect(workspace(page)).not.toContainText(
-    /Fictional (Maple|Cedar|Birch|Willow|Aspen|Juniper|Fern|Moss)|@example\.invalid|member:|identity:|DEMO-PM5/,
+    /(Maya Chen|Jordan Brooks|Sam Patel|Taylor Reed|Casey Park|Riley Morgan|Jamie Ellis|Avery Bennett)|@example\.invalid|member:|identity:|DEMO-PM5/,
   );
   await expect(page.getByLabel('Station to edit')).toHaveCount(0);
   await expect(
@@ -476,7 +564,7 @@ test('station metadata and outages update capacity and flags but preserve bookin
   await page.getByRole('button', { name: 'Save station', exact: true }).click();
   await expect(cell(page, 1, 1)).toContainText('Demo renamed North');
   await expect(cell(page, 1, 1)).toContainText('Out of service');
-  await expect(cell(page, 1, 1)).toContainText('Fictional Maple');
+  await expect(cell(page, 1, 1)).toHaveAccessibleName(/Maya Chen/);
   await expect(cell(page, 1, 1)).toHaveAccessibleName(
     /Station outage: staff review required/,
   );
@@ -488,7 +576,7 @@ test('station metadata and outages update capacity and flags but preserve bookin
   const maple = page
     .getByRole('table', { name: 'Class roster and booking history' })
     .getByRole('row')
-    .filter({ hasText: 'Fictional Maple' });
+    .filter({ hasText: 'Maya Chen' });
   await expect(maple).toContainText('Demo renamed North');
   await expect(maple).toContainText('booked');
   await expect(maple).toContainText('Attended; Checked in');
@@ -497,7 +585,7 @@ test('station metadata and outages update capacity and flags but preserve bookin
   );
   await expect(
     page.getByLabel('Booked member').getByRole('option', {
-      name: 'Fictional Maple - Demo renamed North',
+      name: 'Maya Chen - Demo renamed North',
       exact: true,
     }),
   ).toHaveAttribute('value', 'booking:check-in-maple');
@@ -506,7 +594,7 @@ test('station metadata and outages update capacity and flags but preserve bookin
   await expect(page.getByLabel('PM5 association', { exact: true })).toHaveValue(
     'DEMO-PM5-REPLACEMENT',
   );
-  await page.getByLabel('Station label', { exact: true }).fill('Demo North');
+  await page.getByLabel('Station label', { exact: true }).fill('Rower 01');
   await page.getByLabel('In service', { exact: true }).check();
   await page.getByRole('button', { name: 'Save station', exact: true }).click();
   await expect(cell(page, 1, 1)).toContainText('Booked, checked in');
@@ -629,7 +717,7 @@ test('zero capacity retains reservations, blocks publication and booking, and re
       .getByRole('table', { name: 'Class roster and booking history' })
       .getByRole('row'),
   ).toHaveCount(before.length);
-  for (const name of ['Fictional Maple', 'Fictional Cedar', 'Fictional Moss']) {
+  for (const name of ['Maya Chen', 'Jordan Brooks', 'Avery Bennett']) {
     await expect(
       page
         .getByRole('table', { name: 'Class roster and booking history' })
@@ -660,11 +748,11 @@ test('base arrangement remains available when no current or future class overlay
   await expect(
     workspace(page).getByText(/Base station arrangement. Service states only/),
   ).toBeVisible();
-  await expect(cell(page, 1, 1)).toContainText('Demo North');
+  await expect(cell(page, 1, 1)).toContainText('Rower 01');
   await expect(cell(page, 1, 1)).toContainText('In service');
   await expect(cell(page, 1, 3)).toContainText('Out of service');
   await expect(grid(page)).not.toContainText(
-    /Fictional (Maple|Cedar|Moss)|Booked|Available/,
+    /(Maya Chen|Jordan Brooks|Avery Bennett)|Booked|Available/,
   );
   await placeWithKeyboard(
     page,
@@ -673,12 +761,12 @@ test('base arrangement remains available when no current or future class overlay
     'Space',
     'Enter',
   );
-  await expect(cell(page, 1, 2)).toContainText('Demo North');
+  await expect(cell(page, 1, 2)).toContainText('Rower 01');
   await persona(page, 'member:maple');
   await expect(grid(page)).toBeVisible();
   await expect(cell(page, 1, 2)).toContainText('In service');
   await expect(workspace(page)).not.toContainText(
-    /@example\.invalid|member:|DEMO-PM5|Fictional Maple/,
+    /@example\.invalid|member:|DEMO-PM5|Maya Chen/,
   );
 });
 
@@ -696,7 +784,7 @@ for (const duration of [30, 45, 60]) {
     ]);
     await page
       .getByLabel('Class type to edit')
-      .selectOption({ label: 'Demo Sprint' });
+      .selectOption({ label: 'Power Intervals' });
     await page.getByLabel('Name', { exact: true }).fill('');
     await page.getByRole('button', { name: 'Save class type' }).click();
     await expect(page.getByLabel('Name', { exact: true })).toHaveAttribute(
@@ -728,7 +816,7 @@ for (const duration of [30, 45, 60]) {
     );
     await expect(
       page.getByRole('region', { name: 'Scheduled snapshots' }),
-    ).toContainText('Demo Sprint - 30 minutes');
+    ).toContainText('Power Intervals - 30 minutes');
     await expect(
       page.getByRole('region', { name: 'Scheduled snapshots' }),
     ).not.toContainText(`Demo revised ${duration}`);
@@ -765,7 +853,7 @@ for (const duration of [30, 45, 60]) {
     await page.getByRole('button', { name: 'Publish selected drafts' }).click();
     await persona(page, 'member:maple');
     await expect(card(page, id)).toContainText('Fictional revised water note.');
-    await expect(card(page, classes.free)).toContainText('Demo Sprint');
+    await expect(card(page, classes.free)).toContainText('Power Intervals');
     await expect(card(page, classes.free)).toContainText('30 minutes');
   });
 }
@@ -784,10 +872,10 @@ test('editable multi-entry templates alternate weeks, skip exact duplicates, and
   await page.getByLabel('Entry 2 time', { exact: true }).fill('17:00');
   await page
     .getByLabel('Entry 2 class type')
-    .selectOption({ label: 'Demo Endurance (60 min)' });
+    .selectOption({ label: 'Endurance Row (60 min)' });
   await page
     .getByLabel('Entry 2 coach')
-    .selectOption({ label: 'Fictional Coach Coral' });
+    .selectOption({ label: 'Morgan Ellis' });
   await page
     .getByRole('button', { name: 'Save template', exact: true })
     .click();
@@ -820,7 +908,7 @@ test('editable multi-entry templates alternate weeks, skip exact duplicates, and
     workspace(page)
       .getByRole('article')
       .filter({ hasText: '2026-11-12 17:00' }),
-  ).toContainText('Coach: Fictional Coach Coral');
+  ).toContainText('Coach: Morgan Ellis');
   const applied = await scheduleSnapshot(page);
   await applyTemplate(page, 'Demo custom A', '2026-11-09');
   await expect(workspace(page).getByRole('status')).toContainText(
@@ -869,7 +957,7 @@ test('whole-template overlap rejection identifies conflicts and never adds the o
   const beforeNotifications = await notificationRows(page);
   await navigate(page, 'Schedule');
   const before = await scheduleSnapshot(page);
-  await applyTemplate(page, 'Illustrative conflicting Week A', '2026-10-05');
+  await applyTemplate(page, 'Conflicting Week A', '2026-10-05');
   await expect(workspace(page).getByRole('alert')).toContainText(
     'The proposed class overlaps another scheduled class.',
   );
@@ -987,18 +1075,23 @@ for (const [time, gap] of [
     await navigate(page, 'Schedule');
     await page
       .getByLabel('Template to edit')
-      .selectOption({ label: 'Illustrative zero-gap boundary' });
+      .selectOption({ label: 'Zero-gap boundary' });
     await page.getByLabel('Entry 1 time', { exact: true }).fill(time);
     await page
       .getByRole('button', { name: 'Save template', exact: true })
       .click();
     if (gap === 15) {
-      await createDraft(page, '2026-11-09', '09:00', 'Demo Technique (45 min)');
+      await createDraft(
+        page,
+        '2026-11-09',
+        '09:00',
+        'Rowing Foundations (45 min)',
+      );
     }
     const week = gap === 0 ? '2026-10-05' : '2026-11-09';
     const date = week;
     const before = await scheduleSnapshot(page);
-    await applyTemplate(page, 'Illustrative zero-gap boundary', week);
+    await applyTemplate(page, 'Zero-gap boundary', week);
     await expect(workspace(page).getByRole('status')).toContainText(
       '1 draft created; 0 exact duplicates skipped',
     );
@@ -1060,7 +1153,7 @@ for (const boundary of [
     for (let index = 0; index < boundary.weeks.length; index += 1) {
       await applyTemplate(
         page,
-        'Illustrative Sunday wall-clock recurrence',
+        'Sunday wall-clock recurrence',
         boundary.weeks[index],
       );
       await expect(workspace(page).getByRole('status')).toContainText(
@@ -1121,7 +1214,7 @@ for (const boundary of [
       const occurrence = workspace(page)
         .getByRole('article')
         .filter({ hasText: `${date} 09:00` });
-      await expect(occurrence).toContainText('Demo Sprint');
+      await expect(occurrence).toContainText('Power Intervals');
     }
     expect(await scheduleSnapshot(page)).toEqual(before);
   });
@@ -1132,7 +1225,7 @@ test('one-off drafts can be edited and deleted while invalid weeks and overlappi
 }) => {
   await navigate(page, 'Schedule');
   const baseline = await scheduleSnapshot(page);
-  await applyTemplate(page, 'Illustrative Week A', '2026-11-10');
+  await applyTemplate(page, 'Week A', '2026-11-10');
   await expect(page.getByLabel('Week starting Monday')).toHaveAttribute(
     'aria-invalid',
     'true',
@@ -1143,15 +1236,13 @@ test('one-off drafts can be edited and deleted while invalid weeks and overlappi
   await page.getByLabel('Class start time', { exact: true }).fill('15:30');
   await page
     .getByLabel('Scheduled class type')
-    .selectOption({ label: 'Demo Technique (45 min)' });
-  await page
-    .getByLabel('Class coach')
-    .selectOption({ label: 'Fictional Coach Indigo' });
+    .selectOption({ label: 'Rowing Foundations (45 min)' });
+  await page.getByLabel('Class coach').selectOption({ label: 'Alex Rivera' });
   await page.getByRole('button', { name: 'Save scheduled class' }).click();
   await expect(card(page, id)).toContainText(
     '2026-11-10 15:30 PST - 16:15 PST',
   );
-  await expect(card(page, id)).toContainText('Coach: Fictional Coach Indigo');
+  await expect(card(page, id)).toContainText('Coach: Alex Rivera');
   const edited = await scheduleSnapshot(page);
   await page.getByLabel('Class to edit').selectOption('');
   await page.getByLabel('Class date', { exact: true }).fill('2026-11-10');
@@ -1274,7 +1365,7 @@ for (const outcome of ['success', 'failure'] as const) {
       );
       await expect(card(page, classes.morning)).toContainText('45 minutes');
       await expect(workspace(page).getByRole('alert')).toContainText(
-        `Simulated notifications: ${outcome === 'success' ? '3 sent, 0 failed' : '0 sent, 3 failed'}. No email transmitted.`,
+        `Simulated delivery: ${outcome === 'success' ? '3 sent, 0 failed' : '0 sent, 3 failed'}. No email transmitted.`,
       );
       const saved = await card(page, classes.morning).textContent();
       await expectNotifications(
@@ -1282,9 +1373,9 @@ for (const outcome of ['success', 'failure'] as const) {
         before,
         'Class change',
         [
-          'maple@example.invalid',
-          'cedar@example.invalid',
-          'moss@example.invalid',
+          'maya.chen@example.invalid',
+          'jordan.brooks@example.invalid',
+          'avery.bennett@example.invalid',
         ],
         outcome,
         classes.morning,
@@ -1344,11 +1435,7 @@ for (const outcome of ['success', 'failure'] as const) {
       .getByRole('row')
       .count();
     const waiting = page.getByRole('table', { name: 'FIFO waitlist' });
-    for (const name of [
-      'Fictional Moss',
-      'Fictional Aspen',
-      'Fictional Willow',
-    ]) {
+    for (const name of ['Avery Bennett', 'Casey Park', 'Taylor Reed']) {
       await expect(
         waiting.getByRole('row').filter({ hasText: name }),
       ).toBeVisible();
@@ -1373,7 +1460,7 @@ for (const outcome of ['success', 'failure'] as const) {
     await expect
       .soft(workspace(page).getByRole('alert'))
       .toContainText(
-        `Simulated notifications: ${outcome === 'success' ? '6 sent, 0 failed' : '0 sent, 6 failed'}. No email transmitted.`,
+        `Simulated delivery: ${outcome === 'success' ? '6 sent, 0 failed' : '0 sent, 6 failed'}. No email transmitted.`,
       );
     await navigate(page, 'Bookings');
     await page.getByLabel('Class', { exact: true }).selectOption(classes.full);
@@ -1381,11 +1468,7 @@ for (const outcome of ['success', 'failure'] as const) {
       name: 'Class roster and booking history',
     });
     await expect(table.getByRole('row')).toHaveCount(beforeRoster);
-    for (const name of [
-      'Fictional Maple',
-      'Fictional Cedar',
-      'Fictional Birch',
-    ]) {
+    for (const name of ['Maya Chen', 'Jordan Brooks', 'Sam Patel']) {
       await expect(
         table.getByRole('row').filter({ hasText: name }),
       ).toContainText('cancelled');
@@ -1399,7 +1482,7 @@ for (const outcome of ['success', 'failure'] as const) {
     await expect(
       page
         .getByRole('table', { name: 'FIFO waitlist' })
-        .getByText('Fictional Willow', { exact: true }),
+        .getByText('Taylor Reed', { exact: true }),
     ).toHaveCount(0);
     const after = await notificationRows(page);
     expect(
@@ -1422,9 +1505,14 @@ for (const outcome of ['success', 'failure'] as const) {
       page,
       before,
       'Class cancellation',
-      ['maple', 'cedar', 'birch', 'moss', 'aspen', 'willow'].map(
-        (name) => `${name}@example.invalid`,
-      ),
+      [
+        'maya.chen',
+        'jordan.brooks',
+        'sam.patel',
+        'avery.bennett',
+        'casey.park',
+        'taylor.reed',
+      ].map((name) => `${name}@example.invalid`),
       outcome,
       classes.full,
     );

@@ -1,4 +1,4 @@
-import { act, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,12 +10,20 @@ import { App } from './App';
 import { DemoShell } from './DemoShell';
 
 function shell(path = '/', actor?: DemoActor, scenarioId?: string) {
-  return renderWithDemoState(
+  const view = renderWithDemoState(
     <MemoryRouter initialEntries={[path]}>
       <DemoShell />
     </MemoryRouter>,
     { actor, scenarioId },
   );
+  fireEvent.click(screen.getByText('Demo controls', { selector: 'summary' }));
+  return view;
+}
+
+function renderApp() {
+  const view = render(<App />);
+  fireEvent.click(screen.getByText('Demo controls', { selector: 'summary' }));
+  return view;
 }
 
 const admin: DemoActor = { kind: 'staff', staffId: ids.staff.admin };
@@ -29,20 +37,16 @@ beforeEach(() => {
 
 describe('composed demo shell', () => {
   it('loads under the repository base with one state owner and an unmistakable current notice', () => {
-    render(<App />);
+    renderApp();
     expect(
       screen.getByRole('heading', { name: 'Demo overview' }),
     ).toBeVisible();
-    expect(
-      screen.getByText('SIMULATED DEMO - NOT FOR OPERATIONS'),
-    ).toBeVisible();
+    expect(screen.getByText('Demo · resets on refresh')).toBeVisible();
     expect(screen.getByText(/No live authentication, email/)).toBeVisible();
     expect(
       screen.getByText(/Demo timezone: America\/Los_Angeles.*illustrative/),
     ).toBeVisible();
-    expect(screen.getByLabelText('Fictional persona')).toHaveValue(
-      ids.staff.admin,
-    );
+    expect(screen.getByLabelText('Persona')).toHaveValue(ids.staff.admin);
     expect(
       screen.queryByLabelText(/password|credential/i),
     ).not.toBeInTheDocument();
@@ -51,42 +55,38 @@ describe('composed demo shell', () => {
   it.each([
     ['/staff', 'Staff access'],
     ['/members', 'Members and invitations'],
-    ['/invitations', 'Simulated invitation acceptance'],
-    ['/waivers', 'Fictional waivers'],
+    ['/invitations', 'Invitation acceptance'],
+    ['/waivers', 'Waivers'],
     ['/stations', 'Stations and layout'],
     ['/classes', 'Class types'],
     ['/schedule', 'Schedule'],
     ['/bookings', 'Bookings and waitlists'],
     ['/attendance', 'Attendance and outage roster'],
-    ['/notifications', 'Simulated notifications'],
+    ['/notifications', 'Notifications'],
     ['/coaches', 'Coach profiles'],
-    ['/settings', 'Illustrative Admin settings'],
+    ['/settings', 'Admin settings'],
   ])('mounts the real exported screen at %s', (path, heading) => {
     window.history.replaceState(null, '', `/gym-operations/#${path}`);
-    render(<App />);
+    renderApp();
     expect(screen.getByRole('heading', { name: heading })).toBeVisible();
-    expect(
-      screen.getByText('SIMULATED DEMO - NOT FOR OPERATIONS'),
-    ).toBeVisible();
+    expect(screen.getByText('Demo · resets on refresh')).toBeVisible();
     expect(screen.getByRole('heading', { name: heading })).toHaveFocus();
   });
 
   it('uses hash links and moves focus into the new screen without losing controls', async () => {
-    render(<App />);
+    renderApp();
     const user = userEvent.setup();
     await user.click(screen.getByRole('link', { name: 'Schedule' }));
     expect(window.location.pathname).toBe('/gym-operations/');
     expect(window.location.hash).toBe('#/schedule');
     expect(screen.getByRole('heading', { name: 'Schedule' })).toHaveFocus();
-    expect(screen.getByLabelText('Fictional persona')).toBeVisible();
-    expect(
-      screen.getByText('SIMULATED DEMO - NOT FOR OPERATIONS'),
-    ).toBeVisible();
+    expect(screen.getByLabelText('Persona')).toBeVisible();
+    expect(screen.getByText('Demo · resets on refresh')).toBeVisible();
   });
 
   it('offers an explicit unknown-route fallback and accessible overview navigation', async () => {
     window.history.replaceState(null, '', '/gym-operations/#/unknown');
-    render(<App />);
+    renderApp();
     expect(
       screen.getByRole('heading', { name: 'Page not found' }),
     ).toHaveFocus();
@@ -155,14 +155,14 @@ describe('composed demo shell', () => {
       screen.queryByRole('button', { name: /Create template/ }),
     ).not.toBeInTheDocument();
     await view.user.selectOptions(
-      screen.getByLabelText('Fictional persona'),
+      screen.getByLabelText('Persona'),
       ids.staff.coach,
     );
     expect(
       screen.getByText(/Coach actions are limited to assigned classes/),
     ).toBeVisible();
     await view.user.selectOptions(
-      screen.getByLabelText('Fictional persona'),
+      screen.getByLabelText('Persona'),
       ids.staff.inactive,
     );
     expect(
@@ -201,10 +201,7 @@ describe('composed demo shell', () => {
         }).success,
       ).toBe(true);
     });
-    await view.user.selectOptions(
-      screen.getByLabelText('Fictional persona'),
-      newId,
-    );
+    await view.user.selectOptions(screen.getByLabelText('Persona'), newId);
     expect(view.store.getSnapshot().state.activeActor).toEqual({
       kind: 'staff',
       staffId: newId,
@@ -213,7 +210,7 @@ describe('composed demo shell', () => {
     expect(screen.getByRole('link', { name: 'Coaches' })).toBeVisible();
     expect(screen.getByText(/Class action scope: all classes/)).toBeVisible();
     expect(
-      screen.getByLabelText('Fictional persona').querySelectorAll('option'),
+      screen.getByLabelText('Persona').querySelectorAll('option'),
     ).toHaveLength(
       view.store.getSnapshot().state.staffAccounts.length +
         view.store.getSnapshot().state.members.length +
@@ -229,7 +226,7 @@ describe('composed demo shell', () => {
     expect(screen.getByLabelText('Display name')).toBeVisible();
     expect(screen.getByLabelText('Typed signature')).toBeVisible();
     await view.user.selectOptions(
-      screen.getByLabelText('Fictional persona'),
+      screen.getByLabelText('Persona'),
       ids.members.fern,
     );
     expect(
@@ -237,7 +234,7 @@ describe('composed demo shell', () => {
     ).toBeVisible();
     await view.user.click(screen.getByRole('link', { name: 'Members' }));
     expect(
-      screen.getByRole('heading', { name: 'Your fictional membership' }),
+      screen.getByRole('heading', { name: 'Your membership' }),
     ).toBeVisible();
     expect(
       screen.getAllByText(/Pending\/inactive members cannot book or check in/)
@@ -283,7 +280,7 @@ describe('composed demo shell', () => {
       ...selected.snapshot,
       revision: edited.revision + 1,
     });
-    expect(screen.getByLabelText('Fictional persona')).toHaveValue(
+    expect(screen.getByLabelText('Persona')).toHaveValue(
       ids.invitations.outstanding,
     );
     expect(screen.getByLabelText('Frozen demo clock')).toHaveTextContent(
@@ -313,9 +310,7 @@ describe('composed demo shell', () => {
     expect(view.store.getSnapshot().state).toBe(edited);
     expect(screen.getByRole('button', { name: 'Reset demo' })).toHaveFocus();
     await view.user.click(screen.getByRole('button', { name: 'Reset demo' }));
-    await view.user.click(
-      screen.getByRole('button', { name: 'Reset fictional state' }),
-    );
+    await view.user.click(screen.getByRole('button', { name: 'Reset data' }));
     expect(view.store.getSnapshot().state).toEqual({
       ...createInitialDemoState(),
       revision: edited.revision + 1,
@@ -371,6 +366,7 @@ describe('composed demo shell', () => {
         scenarioId: 'scenario:missing',
       },
       hasUnsavedEdits: false,
+      workspaceVersion: 0,
     });
     act(() => {
       view.store.submit({ type: 'selectActor', payload: { actor: admin } });
@@ -405,7 +401,7 @@ describe('composed demo shell', () => {
         ...scenario.snapshot,
         revision: 1,
       });
-      expect(screen.getByLabelText('Fictional persona')).toHaveValue(
+      expect(screen.getByLabelText('Persona')).toHaveValue(
         scenario.defaultActor.kind === 'staff'
           ? scenario.defaultActor.staffId
           : scenario.defaultActor.kind === 'member'
@@ -450,9 +446,7 @@ describe('composed demo shell', () => {
     );
     expect(screen.getByRole('alert')).toHaveTextContent(failure.error.message);
     await view.user.click(screen.getByRole('button', { name: 'Reset demo' }));
-    await view.user.click(
-      screen.getByRole('button', { name: 'Reset fictional state' }),
-    );
+    await view.user.click(screen.getByRole('button', { name: 'Reset data' }));
     expect(screen.getByRole('alert')).toHaveTextContent(failure.error.message);
     await view.user.click(screen.getByRole('button', { name: '+1 minute' }));
     expect(screen.getByRole('alert')).toHaveTextContent(failure.error.message);
@@ -471,9 +465,7 @@ describe('composed demo shell', () => {
       'draft@example.invalid',
     );
     await view.user.click(screen.getByRole('button', { name: 'Reset demo' }));
-    await view.user.click(
-      screen.getByRole('button', { name: 'Reset fictional state' }),
-    );
+    await view.user.click(screen.getByRole('button', { name: 'Reset data' }));
     expect(screen.getByLabelText('Invitation email')).toHaveValue('');
     expect(
       screen.getByRole('heading', { name: 'Members and invitations' }),
@@ -490,7 +482,7 @@ describe('composed demo shell', () => {
       'staff:fictional-new-coach',
     );
     await view.user.type(
-      screen.getByLabelText('Fictional identity subject'),
+      screen.getByLabelText('Simulated identity subject'),
       'identity:fictional-new-coach',
     );
     await view.user.click(screen.getByLabelText('Coach role'));
@@ -501,7 +493,7 @@ describe('composed demo shell', () => {
       screen.getByRole('button', { name: 'Create account' }),
     );
     await view.user.selectOptions(
-      screen.getByLabelText('Fictional persona'),
+      screen.getByLabelText('Persona'),
       'staff:fictional-new-coach',
     );
     expect(

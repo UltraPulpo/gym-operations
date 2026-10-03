@@ -34,6 +34,9 @@ const supportedActions = {
   createStation: true,
   updateStation: true,
   placeStation: true,
+  retireStation: true,
+  insertLayoutLine: true,
+  removeLayoutLine: true,
   setLayoutOrientation: true,
   createClassType: true,
   updateClassType: true,
@@ -145,6 +148,7 @@ const fieldChecks = {
   currentWaiverVersionId: (value) => value === null || id(value, 'waiver'),
   waiverSignatures: collection,
   stations: collection,
+  retiredStations: collection,
   layout: (value) =>
     record(value) &&
     ['current', 'stale', 'unavailable'].includes(String(value.availability)) &&
