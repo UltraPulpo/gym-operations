@@ -1,0 +1,39 @@
+.screen {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.editors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+.editors form,
+.classCard {
+  border: 1px solid #64748b;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-block: 1rem;
+}
+
+.editors form,
+.editors fieldset {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.warning {
+  border-left: 0.25rem solid #92400e;
+  padding-left: 0.75rem;
+  font-weight: 600;
+}

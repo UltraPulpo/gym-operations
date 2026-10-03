@@ -1,0 +1,104 @@
+.screen,
+.layout,
+.management {
+  display: grid;
+  gap: 1rem;
+}
+
+.screen {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.management {
+  border-top: 2px solid #b8c4ce;
+  padding-top: 1rem;
+}
+
+.gridScroll {
+  overflow-x: auto;
+}
+
+.grid {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.gridRow {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 8rem;
+  padding: 0.75rem;
+  border: 2px solid #405364;
+  border-radius: 0.5rem;
+  color: #172c3a;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cell:focus-visible {
+  outline: 3px solid #1659bd;
+  outline-offset: 2px;
+}
+
+.cell[aria-pressed='true'] {
+  border-style: dashed;
+  box-shadow: inset 0 0 0 2px #172c3a;
+}
+
+.available,
+.inService {
+  background: #e4f4e8;
+}
+
+.bookedNotCheckedIn {
+  background: #fff0ce;
+}
+
+.bookedCheckedIn {
+  background: #e1edff;
+}
+
+.outOfService {
+  background: #f7dfdf;
+}
+
+.empty {
+  background: #f5f7f9;
+  border-style: dashed;
+}
+
+.form,
+.form fieldset {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.form {
+  max-width: 36rem;
+}
+
+.form fieldset {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid #b8c4ce;
+  border-radius: 0.5rem;
+}
+
+.form fieldset:disabled {
+  opacity: 0.7;
+}
+
+.live {
+  margin: 0;
+  font-weight: 600;
+}

@@ -8,7 +8,7 @@ The prototype is a static, simulated interface using fictional seeded data and i
 
 Production service, database, identity, authorization, concurrency, and delivery behavior remain the responsibility of the hosted system described by the [High-Level Design](gym-operations-high-level-design.md). This LLD does not make the browser a production enforcement point.
 
-**Confirmed implementation direction:** React Context with `useReducer`, pure domain transitions, CSS Modules with a small shared design system, hash-based routes, npm, Vitest with React Testing Library, and Playwright. Role restrictions are shown in the UI as a demonstration only. Use a configurable gym IANA timezone for class wall-clock semantics and display; use UTC for internal instants and comparisons. The actual gym timezone remains to be confirmed.
+**Confirmed implementation direction:** React Context with `useReducer`, pure domain transitions, CSS Modules with a small shared design system, hash-based routes, npm, Vitest with React Testing Library, and Playwright. Role restrictions are shown in the UI as a demonstration only. Use `America/Los_Angeles` for demo class wall-clock semantics, display, and DST fixtures; use UTC for internal instants and comparisons. This user-confirmed illustrative demo zone supersedes the earlier placeholder and New York test-zone proposal; it is not approved gym policy. The actual operational gym timezone remains to be confirmed.
 
 **Prerequisites:**
 - [Requirements Document](gym-operations-requirements.md)
@@ -67,7 +67,7 @@ The shared shell provides a frozen virtual clock with named presets and step con
 
 ### 2.4 Domain and Demo State
 
-`domain` defines the shapes needed to demonstrate the requirements. Entities use stable string IDs, explicit lifecycle/status unions, and typed dates/times. Class times and recurring template entries use the configured gym IANA timezone and local wall-clock semantics, so template times remain stable across daylight-saving changes; UTC instants are used for comparisons. Until the gym location is confirmed, the demo timezone must be labeled as a placeholder. DST test scenarios use an explicit illustrative IANA zone and fixed UTC instants, labeled as test fixtures rather than the gym's configured timezone.
+`domain` defines the shapes needed to demonstrate the requirements. Entities use stable string IDs, explicit lifecycle/status unions, and typed dates/times. Class times and recurring template entries use `America/Los_Angeles` and local wall-clock semantics, so template times remain stable across daylight-saving changes; UTC instants are used for comparisons. The demo timezone is labeled illustrative, not approved gym policy. DST test scenarios use the same illustrative zone and fixed UTC instants, labeled as test fixtures rather than operational configuration.
 
 `demo-state` owns one immutable in-memory state tree initialized from fixtures. React Context and `useReducer` apply validated pure transitions and expose selectors to features. It may demonstrate atomic-looking transitions (such as swaps or waitlist promotion) within one reducer action, but this is not a guarantee of transactionality or concurrency safety. There is no browser localStorage, IndexedDB, service worker cache, or remote persistence.
 
@@ -430,8 +430,8 @@ The composition root is `App`. It creates the demo state provider from `createIn
 | Email outcome | Scenario enum | Success by default; deterministic failure selectable in UI | Local email simulator |
 | Identity outcome | Scenario enum | Verified demo subject by default; rejection selectable in UI | Local identity simulator |
 | Demo clock | Instant | Frozen named scenario preset | Demo state |
-| Gym timezone | IANA timezone identifier | Clearly labeled placeholder until gym location is confirmed | Demo scenario settings |
-| DST test scenario zone | IANA timezone identifier | `America/New_York` for illustrative tests only | Test scenario fixture |
+| Demo timezone | IANA timezone identifier | `America/Los_Angeles`, illustrative and not approved gym policy | Demo scenario settings |
+| DST test scenario zone | IANA timezone identifier | `America/Los_Angeles` for illustrative tests only | Test scenario fixture |
 | Routes | Hash route strings | Feature route per selected workspace screen | Application configuration |
 | Static asset base path | Build-time string | GitHub Pages repository path | Vite configuration |
 
@@ -472,7 +472,7 @@ Each test uses the deterministic fixture state, runs against the static client b
 | Waiver version demo | FR-3.3.1 | Publish a new version and use members with old/current signatures | Existing booking remains; old signature is preserved; missing current signature blocks further booking and check-in; staff can inspect signature version. |
 | Station layout demo | FR-3.4.1, FR-3.4.2 | Change station service state and grid position; operate grid by keyboard using arrow keys, Enter/Space, and Escape; load different classes and roles | Capacity and station states update; keyboard placement/swap changes only layout coordinates; Escape cancels selection; station identity, status, bookings, and capacity remain unchanged; state uses text/icon in addition to color; member view omits assigned names; unavailable class state disables reseating. |
 | Class type demo | FR-3.4.3 | Edit duration and descriptive fields on a class type with existing and future classes | Invalid duration is rejected; future class uses changed details; existing snapshot remains unchanged. |
-| Weekly template demo | FR-3.5.1 | Apply template with exact duplicate, overlap, short gap, alternating week, and daylight-saving boundary fixtures using `America/New_York` and fixed instants | Exact duplicate is skipped; any overlap rejects the full application; warning-only gap is shown; only drafts are created; template remains at the same local wall-clock time across the DST change while UTC instants reflect the changed offset; scenario zone is labeled illustrative. |
+| Weekly template demo | FR-3.5.1 | Apply template with exact duplicate, overlap, short gap, alternating week, and daylight-saving boundary fixtures using `America/Los_Angeles` and fixed instants | Exact duplicate is skipped; any overlap rejects the full application; warning-only gap is shown; only drafts are created; template remains at the same local wall-clock time across the DST change while UTC instants reflect the changed offset; scenario zone is labeled illustrative. |
 | Publish and lifecycle demo | FR-3.5.2, FR-3.5.3 | Publish batch, edit time/date/coach, cancel class, and vary release policy | Only published/released classes appear to member view; relevant changes and cancellation produce simulated notification records; start-time change marks late-cancel waiver; date-only/coach edit does not; class states remain in history. |
 | Booking and waitlist demo | FR-3.6.1, FR-3.6.2 | Book free station, attempt a stale selection, fill capacity, queue members, cancel/remove/move, and cross cutoff | Confirmed demo booking appears once; conflict does not show success; FIFO eligible promotion and skip behavior are shown; out-of-service station, occupied swap, and class cancellation do not promote; cutoff stops promotion; rejoin is last. |
 | Cancellation and reseating demo | FR-3.6.3 | Member cancel before/after start; staff removal; move and confirmed swap; change destination before confirmation | Outcomes remain distinct; late cancel is marked only per cutoff; move/swap preserve check-in and attendance history; invalid destination leaves both assignments unchanged; no member notification is emitted for staff reseating. |
@@ -523,7 +523,7 @@ No containers or test database are required. Browser tests must start from reset
 ## 9. Open Questions
 
 1. **Demo fixture launch values:** What member cap, invitation expiration, waitlist cutoff, and late-cancel cutoff should the demonstration display? Until decided, fixture values must be labeled illustrative.
-2. **Gym timezone:** What IANA timezone should replace the clearly labeled placeholder for the gym? The implementation must use local wall-clock schedule semantics and UTC instants for comparisons.
+2. **Operational gym timezone:** What IANA timezone should the hosted gym system use? The POC uses the user-confirmed illustrative `America/Los_Angeles` zone for both demo schedules and DST tests, without approving it as operational gym policy. Schedule semantics remain local wall-clock values with UTC instants for comparisons.
 3. **Visual and content assets:** Final branding, fictional coach avatars, and fictional waiver wording must be selected before the demo is shared. No real member data or real legal waiver should be placed in the public static demo.
 
 ---

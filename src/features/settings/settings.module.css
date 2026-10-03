@@ -1,0 +1,20 @@
+.screen {
+  display: grid;
+  gap: 1rem;
+  max-width: 64rem;
+}
+
+.form {
+  display: grid;
+  gap: 1rem;
+}
+
+.form > button {
+  justify-self: start;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 1rem;
+}

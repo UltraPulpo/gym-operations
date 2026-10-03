@@ -1,0 +1,73 @@
+.screen {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.heading {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.heading h1,
+.heading p {
+  margin: 0;
+}
+
+.heading p {
+  margin-top: 0.35rem;
+}
+
+.rowActions,
+.formActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.detail {
+  border: 1px solid #d2d9e0;
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.detail h2,
+.detail h3 {
+  margin-top: 0;
+}
+
+.fieldset {
+  border: 1px solid #d2d9e0;
+  border-radius: 0.35rem;
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem;
+}
+
+.fieldset p {
+  margin: 0;
+}
+
+.form {
+  display: grid;
+  gap: 1rem;
+}
+
+.boundary {
+  border-left: 0.25rem solid #566573;
+  margin: 0;
+  padding-left: 0.75rem;
+}
+
+@media (max-width: 42rem) {
+  .heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .rowActions {
+    min-width: 10rem;
+  }
+}
