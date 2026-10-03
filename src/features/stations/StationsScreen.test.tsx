@@ -1,4 +1,11 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { FIXTURE_IDS as ids } from '../../demo-fixtures';
@@ -245,6 +252,243 @@ describe('station management', () => {
     await user.click(screen.getByRole('button', { name: 'Save station' }));
     expect(screen.getByRole('alert')).toHaveTextContent('demo state changed');
     expect(store.getSnapshot()).toBe(before);
+  });
+
+  it('removes an idle station only after alertdialog confirmation', async () => {
+    const initial = createDemoTestState({ actor: admin });
+    const removable = {
+      stationId: 'station:idle-remove' as const,
+      label: 'Idle removable',
+      pm5Serial: 'PM5-IDLE',
+      inService: true,
+      row: 3,
+      column: 0,
+    };
+    const { store, user } = renderState({
+      ...initial,
+      stations: [...initial.stations, removable],
+    });
+
+    await user.selectOptions(
+      screen.getByLabelText('Station to edit'),
+      removable.stationId,
+    );
+    await user.click(
+      within(
+        screen.getByRole('region', { name: 'Admin station management' }),
+      ).getByRole('button', { name: 'Remove station' }),
+    );
+    expect(screen.getByRole('alertdialog')).toHaveTextContent('Idle removable');
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(store.getSnapshot().state.stations).toContainEqual(removable);
+
+    await user.click(screen.getByRole('button', { name: 'Remove station' }));
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'Remove station',
+      }),
+    );
+    expect(store.getSnapshot().state.stations).not.toContainEqual(removable);
+    expect(store.getSnapshot().state.retiredStations).toContainEqual({
+      stationId: removable.stationId,
+      label: removable.label,
+      pm5Serial: removable.pm5Serial,
+      retiredAt: initial.clock.now,
+    });
+    expect(screen.getByRole('status', { name: '' })).toHaveTextContent(
+      'Station removed.',
+    );
+  });
+
+  it('shows a blocked removal error when active bookings reference the station', async () => {
+    const { store, user } = renderEditing(<StationsScreen />, {
+      actor: admin,
+    });
+    await user.selectOptions(
+      screen.getByLabelText('Station to edit'),
+      ids.stations.outage,
+    );
+    const before = store.getSnapshot();
+    await user.click(screen.getByRole('button', { name: 'Remove station' }));
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'Remove station',
+      }),
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent(/active booking/i);
+    expect(store.getSnapshot()).toBe(before);
+  });
+
+  it('closes row and column removal confirmations after rejection so errors are reachable', async () => {
+    const { store, user } = renderEditing(<StationsScreen />, {
+      actor: admin,
+    });
+    const before = store.getSnapshot();
+    await user.click(
+      screen.getByRole('button', { name: 'Remove empty row/column' }),
+    );
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'Remove empty row/column',
+      }),
+    );
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(/only empty/i);
+    expect(store.getSnapshot()).toBe(before);
+  });
+
+  it('inserts and removes layout columns without changing bookings', async () => {
+    const { store, user } = renderEditing(<StationsScreen />, {
+      actor: admin,
+    });
+    const before = store.getSnapshot().state;
+    await user.selectOptions(screen.getByLabelText('Layout axis'), 'column');
+    await fill('Layout line index', '1', user);
+    await user.click(screen.getByRole('button', { name: 'Insert before' }));
+    expect(
+      store
+        .getSnapshot()
+        .state.stations.find(
+          (station) => station.stationId === ids.stations.east,
+        ),
+    ).toMatchObject({ column: 3 });
+    expect(store.getSnapshot().state.bookings).toBe(before.bookings);
+
+    await user.click(
+      screen.getByRole('button', { name: 'Remove empty row/column' }),
+    );
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'Remove empty row/column',
+      }),
+    );
+    expect(store.getSnapshot().state.stations).toEqual(before.stations);
+    expect(store.getSnapshot().state.bookings).toBe(before.bookings);
+  });
+
+  it('offers quick actions for inspected empty cells in edit mode', async () => {
+    const { store, user } = renderEditing(<StationsScreen />, {
+      actor: admin,
+    });
+    await user.click(cell(1, 2));
+    expect(
+      screen.getByRole('region', { name: 'Station details' }),
+    ).toHaveTextContent('Empty cell at row 0, column 1');
+    await user.click(
+      screen.getByRole('button', { name: 'Insert column left' }),
+    );
+    expect(
+      store
+        .getSnapshot()
+        .state.stations.find(
+          (station) => station.stationId === ids.stations.east,
+        ),
+    ).toMatchObject({ column: 3 });
+
+    await user.click(cell(1, 2));
+    await user.click(screen.getByRole('button', { name: 'Remove column 1' }));
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'Remove column 1',
+      }),
+    );
+    expect(
+      store
+        .getSnapshot()
+        .state.stations.find(
+          (station) => station.stationId === ids.stations.east,
+        ),
+    ).toMatchObject({ column: 2 });
+    await waitFor(() => expect(cell(1, 2)).toHaveFocus());
+  });
+
+  it('clears a pending pick and focuses the grid after retiring from station details', async () => {
+    const initial = createDemoTestState({ actor: admin });
+    const removable = {
+      stationId: 'station:idle-details-remove' as const,
+      label: 'Idle details removable',
+      pm5Serial: null,
+      inService: true,
+      row: 3,
+      column: 0,
+    };
+    const { store, user } = renderState({
+      ...initial,
+      stations: [...initial.stations, removable],
+    });
+    await user.click(cell(4, 1));
+    expect(
+      screen.getByRole('button', { name: 'Cancel placement' }),
+    ).toBeVisible();
+
+    await user.click(
+      within(screen.getByRole('region', { name: 'Station details' })).getByRole(
+        'button',
+        { name: 'Remove station' },
+      ),
+    );
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'Remove station',
+      }),
+    );
+
+    expect(store.getSnapshot().state.stations).not.toContainEqual(removable);
+    expect(
+      screen.queryByRole('button', { name: 'Cancel placement' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('status', { name: 'Layout interaction' }),
+    ).toHaveTextContent(/station removed/i);
+    expect(
+      within(screen.getByRole('grid')).queryByRole('button', { pressed: true }),
+    ).not.toBeInTheDocument();
+    await waitFor(() => expect(cell(4, 1)).toHaveFocus());
+    await user.click(cell(4, 1));
+    expect(screen.queryByText(/demo state changed/i)).not.toBeInTheDocument();
+  });
+
+  it('clears a pending pick and focuses management after retiring from the management form', async () => {
+    const initial = createDemoTestState({ actor: admin });
+    const removable = {
+      stationId: 'station:idle-management-remove' as const,
+      label: 'Idle management removable',
+      pm5Serial: null,
+      inService: true,
+      row: 3,
+      column: 0,
+    };
+    const { store, user } = renderState({
+      ...initial,
+      stations: [...initial.stations, removable],
+    });
+    await user.click(cell(4, 1));
+    await user.selectOptions(
+      screen.getByLabelText('Station to edit'),
+      removable.stationId,
+    );
+
+    await user.click(
+      within(
+        screen.getByRole('region', { name: 'Admin station management' }),
+      ).getByRole('button', { name: 'Remove station' }),
+    );
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'Remove station',
+      }),
+    );
+
+    expect(store.getSnapshot().state.stations).not.toContainEqual(removable);
+    expect(
+      screen.queryByRole('button', { name: 'Cancel placement' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('status', { name: 'Layout interaction' }),
+    ).toHaveTextContent(/station removed/i);
+    await waitFor(() =>
+      expect(screen.getByLabelText('Station to edit')).toHaveFocus(),
+    );
   });
 });
 

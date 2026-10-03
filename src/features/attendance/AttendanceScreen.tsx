@@ -130,11 +130,17 @@ function AttendanceWorkspace() {
   const memberName = (memberId: AttendanceRecord['memberId']) =>
     rosterMembers.find((item) => item.memberId === memberId)?.displayName ??
     'Member unavailable';
-  const stationName = (booking: Booking | undefined) =>
-    booking
-      ? (state.stations.find((item) => item.stationId === booking.stationId)
-          ?.label ?? 'Station unavailable')
-      : 'No assigned station';
+  const stationName = (booking: Booking | undefined) => {
+    if (!booking) return 'No assigned station';
+    const station = state.stations.find(
+      (item) => item.stationId === booking.stationId,
+    );
+    if (station) return station.label;
+    const retired = state.retiredStations.find(
+      (item) => item.stationId === booking.stationId,
+    );
+    return retired ? `${retired.label} (removed)` : 'Station unavailable';
+  };
   const rows: RosterRow[] = [
     ...bookings.map((booking) => ({
       key: booking.bookingId,

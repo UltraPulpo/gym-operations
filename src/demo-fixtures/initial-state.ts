@@ -760,6 +760,7 @@ export function createInitialDemoState(): DemoState {
         column: 2,
       },
     ],
+    retiredStations: [],
     layout: {
       availability: 'current',
       orientationLabel: 'Entrance at bottom; center aisle',

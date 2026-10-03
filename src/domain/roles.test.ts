@@ -106,6 +106,7 @@ function state(): DemoState {
     currentWaiverVersionId: null,
     waiverSignatures: [],
     stations: [],
+    retiredStations: [],
     layout: { availability: 'current' },
     classTypes: [],
     weeklyTemplates: [],

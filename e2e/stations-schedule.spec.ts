@@ -326,6 +326,85 @@ async function notificationSnapshot(page: Page) {
   return { rows, ids };
 }
 
+test('admin removes an idle station after confirmation without changing bookings @stations', async ({
+  page,
+}) => {
+  await page.getByLabel('New station label', { exact: true }).fill('Idle E2E');
+  await page
+    .getByLabel('New PM5 association', { exact: true })
+    .fill('PM5-IDLE-E2E');
+  await page.getByRole('button', { name: 'Create station' }).click();
+  await expect(workspace(page).getByText('Station change saved')).toBeVisible();
+  const beforeRoster = await bookingSnapshot(page);
+  await navigate(page, 'Stations');
+  await page
+    .getByLabel('Station to edit')
+    .selectOption('station:demo-created-1');
+  await page.getByRole('button', { name: 'Remove station' }).click();
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toContainText('Idle E2E');
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByLabel('Station to edit')).toContainText('Idle E2E');
+  await page.getByRole('button', { name: 'Remove station' }).click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Remove station' })
+    .click();
+  await expect(workspace(page).getByText('Station removed.')).toBeVisible();
+  await expect(page.getByLabel('Station to edit')).not.toContainText(
+    'Idle E2E',
+  );
+  expect(await bookingSnapshot(page)).toEqual(beforeRoster);
+});
+
+test('admin cannot remove a station with active bookings @stations', async ({
+  page,
+}) => {
+  const beforeRoster = await bookingSnapshot(page);
+  await navigate(page, 'Stations');
+  await page.getByLabel('Station to edit').selectOption('station:demo-outage');
+  await page.getByRole('button', { name: 'Remove station' }).click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Remove station' })
+    .click();
+  await expect(workspace(page).getByRole('alert')).toContainText(
+    /active booking/i,
+  );
+  await expect(page.getByLabel('Station to edit')).toContainText('Rower 04');
+  expect(await bookingSnapshot(page)).toEqual(beforeRoster);
+});
+
+test('admin removes an empty column to close a layout gap @stations', async ({
+  page,
+}) => {
+  const beforeRoster = await bookingSnapshot(page);
+  await navigate(page, 'Stations');
+  await page.getByLabel('Layout axis', { exact: true }).selectOption('column');
+  await page.getByLabel('Layout line index').fill('1');
+  await page.getByRole('button', { name: 'Remove empty row/column' }).click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Remove empty row/column' })
+    .click();
+  await expect(cell(page, 2, 2)).toContainText('Rower 03');
+  await expect(cell(page, 2, 3)).toContainText('Empty cell');
+  expect(await bookingSnapshot(page)).toEqual(beforeRoster);
+});
+
+test('admin inserts a column before existing stations without moving bookings @stations', async ({
+  page,
+}) => {
+  const beforeRoster = await bookingSnapshot(page);
+  await navigate(page, 'Stations');
+  await page.getByLabel('Layout axis', { exact: true }).selectOption('column');
+  await page.getByLabel('Layout line index').fill('1');
+  await page.getByRole('button', { name: 'Insert before' }).click();
+  await expect(cell(page, 2, 4)).toContainText('Rower 03');
+  await expect(cell(page, 2, 3)).toContainText('Empty cell');
+  expect(await bookingSnapshot(page)).toEqual(beforeRoster);
+});
+
 async function expectNotifications(
   page: Page,
   before: Awaited<ReturnType<typeof notificationSnapshot>>,

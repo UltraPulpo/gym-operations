@@ -243,10 +243,18 @@ function ClassBookings({
       station.stationId !== source?.stationId &&
       (!isMember || station.state === 'available'),
   );
-  const stationName = (stationId: string) =>
-    stations.find((item) => item.stationId === stationId)?.label ??
-    demo.state.stations.find((item) => item.stationId === stationId)?.label ??
-    `${stationId} (station label unavailable)`;
+  const stationName = (stationId: string) => {
+    const label =
+      stations.find((item) => item.stationId === stationId)?.label ??
+      demo.state.stations.find((item) => item.stationId === stationId)?.label;
+    if (label) return label;
+    const retired = demo.state.retiredStations.find(
+      (item) => item.stationId === stationId,
+    );
+    return retired
+      ? `${retired.label} (removed)`
+      : `${stationId} (station label unavailable)`;
+  };
   const eligible = isMember
     ? checkMemberEligibility(demo.state, actor.memberId, demo.now)
     : undefined;

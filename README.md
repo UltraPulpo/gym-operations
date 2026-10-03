@@ -32,10 +32,14 @@ Stations start in **View layout**. Select a compact tile to inspect its
 coordinates, state, and authorized details; members never see assigned names.
 Only an active Admin can choose **Edit layout** to expose existing management
 and placement controls. Arrow keys navigate; Enter/Space picks and drops;
-Escape or **Cancel placement** cancels the pending pick. **Finish editing**
-does not undo submitted changes. Touch placement uses two taps. The map keeps
-physical coordinates and scrolls locally on narrow screens. Station/row/column
-removal and dense-table redesign are not included.
+Escape or **Cancel placement** cancels the pending pick. Admins can remove an
+idle station after confirmation; the station is retired from active capacity
+and retained only for history labels. Removal is blocked when active booked
+reservations still reference that station. Admins can also insert a row/column
+or remove an empty row/column to close a gap; layout edits never move or cancel
+bookings. **Finish editing** does not undo submitted changes. Touch placement
+uses two taps. The map keeps physical coordinates and scrolls locally on narrow
+screens.
 
 ## Local tooling
 
@@ -94,7 +98,7 @@ staff permissions, invitation/current-waiver acceptance, whole-template overlap
 rejection, stale booking conflict, eligible FIFO promotion, exact-end no-show,
 keyboard navigation/dialogs/forms/station grids, responsive layouts at 320,
 390, 768 and 1440 pixels, and representative axe scans.
-The full suite currently contains **109 tests** across six spec files.
+The full suite currently contains **113 tests** across six spec files.
 
 To build and run the full browser suite in one command:
 

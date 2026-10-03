@@ -4,6 +4,7 @@ import type {
   DemoState,
   DomainResult,
   GridPosition,
+  RetiredStation,
   LayoutView,
   MemberLayoutStation,
   ScheduledClass,
@@ -14,6 +15,8 @@ import type {
   StationState,
   UtcInstant,
 } from './types';
+
+type LayoutAxis = 'row' | 'column';
 
 export function getClassCapacity(state: Pick<DemoState, 'stations'>): number {
   return state.stations.filter((station) => station.inService).length;
@@ -90,6 +93,10 @@ function validPosition(row: number, column: number): boolean {
   );
 }
 
+function validLineIndex(index: number): boolean {
+  return Number.isSafeInteger(index) && index >= 0;
+}
+
 function reconcileServiceState(
   state: DemoState,
   stations: readonly Station[],
@@ -135,6 +142,11 @@ export function createStation(
   if (state.stations.some((item) => item.stationId === station.stationId)) {
     return invalid('stationId', 'A station with this ID already exists.');
   }
+  if (
+    state.retiredStations.some((item) => item.stationId === station.stationId)
+  ) {
+    return invalid('stationId', 'A station with this ID already exists.');
+  }
   if (!validPosition(station.row, station.column)) {
     return invalid(
       'position',
@@ -153,6 +165,109 @@ export function createStation(
   return {
     success: true,
     value: reconcileServiceState(state, [...state.stations, { ...station }]),
+  };
+}
+
+export function retireStation(
+  state: DemoState,
+  stationId: StationId,
+  retiredAt: UtcInstant = state.clock.now,
+  actor: DemoActor = state.activeActor,
+): DomainResult<DemoState> {
+  const permission = requireAdmin(state, actor);
+  if (!permission.success) return permission;
+  const station = state.stations.find((item) => item.stationId === stationId);
+  if (!station) return missingStation(stationId);
+  const activeBookingCount = state.bookings.filter((booking) => {
+    if (booking.status !== 'booked' || booking.stationId !== stationId)
+      return false;
+    const scheduledClass = state.classes.find(
+      (item) => item.classId === booking.classId,
+    );
+    return (
+      scheduledClass?.status !== 'completed' &&
+      scheduledClass?.status !== 'cancelled'
+    );
+  }).length;
+  if (activeBookingCount > 0) {
+    return {
+      success: false,
+      error: {
+        category: 'IneligibleDemoAction',
+        reason: 'stationHasActiveBookings',
+        message: `Remove or complete ${activeBookingCount} active booking${activeBookingCount === 1 ? '' : 's'} before removing this station.`,
+      },
+    };
+  }
+  const retiredStation: RetiredStation = {
+    stationId: station.stationId,
+    label: station.label,
+    pm5Serial: station.pm5Serial,
+    retiredAt,
+  };
+  const next = reconcileServiceState(
+    {
+      ...state,
+      retiredStations: [...state.retiredStations, retiredStation],
+    },
+    state.stations.filter((item) => item.stationId !== stationId),
+  );
+  return { success: true, value: next };
+}
+
+export function insertLayoutLine(
+  state: DemoState,
+  axis: LayoutAxis,
+  index: number,
+  actor: DemoActor = state.activeActor,
+): DomainResult<DemoState> {
+  const permission = requireAdmin(state, actor);
+  if (!permission.success) return permission;
+  if (!validLineIndex(index)) {
+    return invalid('index', 'Line index must be a non-negative whole number.');
+  }
+  const shifted = state.stations.map((station) => {
+    if (station[axis] < index) return station;
+    const nextIndex = station[axis] + 1;
+    if (!Number.isSafeInteger(nextIndex)) return null;
+    return { ...station, [axis]: nextIndex };
+  });
+  if (shifted.some((station) => station === null)) {
+    return invalid('index', 'Line insertion would exceed safe grid bounds.');
+  }
+  return {
+    success: true,
+    value: { ...state, stations: shifted as readonly Station[] },
+  };
+}
+
+export function removeLayoutLine(
+  state: DemoState,
+  axis: LayoutAxis,
+  index: number,
+  actor: DemoActor = state.activeActor,
+): DomainResult<DemoState> {
+  const permission = requireAdmin(state, actor);
+  if (!permission.success) return permission;
+  if (!validLineIndex(index)) {
+    return invalid('index', 'Line index must be a non-negative whole number.');
+  }
+  if (state.stations.some((station) => station[axis] === index)) {
+    return invalid('index', 'Only empty rows or columns can be removed.');
+  }
+  if (!state.stations.some((station) => station[axis] > index)) {
+    return invalid('index', 'There is no later row or column to close.');
+  }
+  return {
+    success: true,
+    value: {
+      ...state,
+      stations: state.stations.map((station) =>
+        station[axis] > index
+          ? { ...station, [axis]: station[axis] - 1 }
+          : station,
+      ),
+    },
   };
 }
 

@@ -241,6 +241,7 @@ function makeState(overrides: Partial<DemoState> = {}): DemoState {
         column: 3,
       },
     ],
+    retiredStations: overrides.retiredStations ?? [],
     layout: { availability: 'current' },
     classTypes: [],
     weeklyTemplates: [],

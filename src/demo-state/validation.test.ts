@@ -188,6 +188,30 @@ const routeCases = {
       payload: { stationId: ids.stations.north, row: 2, column: 2 },
     }),
   },
+  retireStation: {
+    setup: (state) => ({
+      ...state,
+      bookings: state.bookings.filter(
+        (booking) => booking.stationId !== ids.stations.outage,
+      ),
+    }),
+    action: () => ({
+      type: 'retireStation',
+      payload: { stationId: ids.stations.outage },
+    }),
+  },
+  insertLayoutLine: {
+    action: () => ({
+      type: 'insertLayoutLine',
+      payload: { axis: 'column', index: 1 },
+    }),
+  },
+  removeLayoutLine: {
+    action: () => ({
+      type: 'removeLayoutLine',
+      payload: { axis: 'column', index: 1 },
+    }),
+  },
   setLayoutOrientation: {
     action: () => ({
       type: 'setLayoutOrientation',
@@ -670,6 +694,30 @@ const routeAssertions = {
     expect(
       next.stations.find((station) => station.stationId === ids.stations.north),
     ).toMatchObject({ row: 2, column: 2 }),
+  retireStation: (next, before) => {
+    expect(
+      next.stations.some(
+        (station) => station.stationId === ids.stations.outage,
+      ),
+    ).toBe(false);
+    expect(next.retiredStations).toEqual([
+      ...before.retiredStations,
+      {
+        stationId: ids.stations.outage,
+        label: 'Rower 04',
+        pm5Serial: 'DEMO-PM5-OUTAGE',
+        retiredAt: before.clock.now,
+      },
+    ]);
+  },
+  insertLayoutLine: (next) =>
+    expect(
+      next.stations.find((station) => station.stationId === ids.stations.east),
+    ).toMatchObject({ column: 3 }),
+  removeLayoutLine: (next) =>
+    expect(
+      next.stations.find((station) => station.stationId === ids.stations.east),
+    ).toMatchObject({ column: 1 }),
   setLayoutOrientation: (next) =>
     expect(next.layout.orientationLabel).toBe('Demo entrance on the left'),
   createClassType: (next) =>

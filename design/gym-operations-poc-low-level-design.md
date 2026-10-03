@@ -110,6 +110,7 @@ classDiagram
         +invitations
         +waivers
         +stations
+        +retiredStations
         +classes
         +bookings
         +waitlistEntries
@@ -380,6 +381,8 @@ There is no database or remote repository in the GitHub Pages PoC. The `DemoStat
 | Book or cancel a station reservation | Validate eligibility and availability against current state; dispatch accepted action to update related booking/layout state in one reducer transition | No production transaction | Demonstrates intended outcome only; no cross-user coordination. |
 | Promote waitlist member | Select first currently eligible fixture entry, then update entry and booking state together | No production transaction | Skips ineligible entries in the demonstration and retains them for review. |
 | Move or swap stations | Validate all destinations before one reducer action | No production transaction | A failed action leaves both bookings unchanged in this browser state. |
+| Retire a station | Active Admin submits `retireStation`; active booked reservations in non-completed/non-cancelled classes block the action, otherwise the station leaves `stations` and is appended to `retiredStations` with label, PM5 serial, and timestamp | No production transaction | Retired stations never count toward capacity or layouts; booking/attendance history resolves the retained label with `(removed)`. |
+| Insert or remove a row/column | Active Admin submits `insertLayoutLine` or `removeLayoutLine`; indexes must be safe non-negative integers and removal requires an empty line with stations beyond it | No production transaction | Later station coordinates shift; bookings, waitlists, attendance, and class records are never moved or cancelled. |
 | Template application | Expand and validate complete proposal before dispatch | No production transaction | Rejects the whole simulated application on overlap; duplicate and short-gap cases are surfaced. |
 | Email or identity interaction | Deterministic local scenario selection | None | Never makes a network request to identity or email providers. |
 
@@ -458,7 +461,7 @@ Testing validates that the static prototype faithfully demonstrates selected req
 | `demo-role` selectors and shell | One demo actor is active at a time; a multi-role staff account receives the union of its assigned capabilities; Admin, Front Desk, and Coach permission boundaries are table-tested; UI always identifies simulated mode | FR-3.1.1, FR-3.1.2 |
 | Invitation/member rules | Invite create, resend, revoke, expiration, duplicate email, verified demo acceptance, required adult attestation, pending-at-cap, activation/deactivation, and retained identity/history behavior | FR-3.2.1, FR-3.2.2, FR-3.2.3 |
 | Waiver selectors and transitions | Version publish preserves old signatures/bookings; current signature gates simulated booking/check-in; typed name and timestamp are represented | FR-3.3.1 |
-| Station and layout rules | Capacity derived from in-service stations; zero-capacity class blocked from publish/booking; service changes flag bookings; occupied-cell drop swaps positions only; layout state and role-specific names render accessibly | FR-3.4.1, FR-3.4.2 |
+| Station and layout rules | Capacity derived from active in-service stations; retired stations retained only for history labels; zero-capacity class blocked from publish/booking; service changes flag bookings; occupied-cell drop swaps positions only; station retirement blocks active booked reservations; empty row/column removal and insertion shift coordinates without touching bookings; layout state and role-specific names render accessibly | FR-3.4.1, FR-3.4.2 |
 | Class type rules | Required fields and allowed durations; future class type changes do not rewrite class snapshots | FR-3.4.3 |
 | Template and schedule rules | Local weekday/time expansion, exact duplicate skip, whole-proposal overlap rejection, short-gap warning, draft-only creation, lifecycle transitions, notifications for relevant edits, release policy outcomes, and DST test fixtures using explicit zone/instants | FR-3.5.1, FR-3.5.2, FR-3.5.3 |
 | Booking and waitlist rules | Eligibility, station exclusivity, stale station conflict, unlimited trial booking count, FIFO ordering, rejoin-to-tail, cutoff, skip ineligible entry, no promotion for out-of-service station/class cancellation/swap | FR-3.6.1, FR-3.6.2, FR-3.6.3 |

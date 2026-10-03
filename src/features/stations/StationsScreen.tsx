@@ -21,6 +21,7 @@ import {
   Alert,
   Button,
   CheckboxField,
+  ConfirmationDialog,
   InputField,
   SelectField,
   StatusBadge,
@@ -39,6 +40,7 @@ type Submit = (
   action: DemoAction,
   revision: number,
 ) => DomainResult<AcceptedAction>;
+type LayoutAxis = 'row' | 'column';
 type AvailableLayout = Extract<LayoutView, { status: 'available' }>;
 type BaseLayout = {
   readonly status: 'available';
@@ -81,6 +83,9 @@ function nextStationId(state: DemoState): StationId {
   let suffix = 1;
   while (
     state.stations.some(
+      (station) => station.stationId === `station:demo-created-${suffix}`,
+    ) ||
+    state.retiredStations.some(
       (station) => station.stationId === `station:demo-created-${suffix}`,
     )
   ) {
@@ -173,6 +178,7 @@ function LayoutWorkspace({ classId, editable = false }: StationLayoutProps) {
     message: string;
     failed: boolean;
   }>();
+  const stationSelectRef = useRef<HTMLSelectElement>(null);
   const unavailableId = useId();
   if (!demo.capabilities.success) {
     return <UnavailableState message={demo.capabilities.error.message} />;
@@ -235,7 +241,14 @@ function LayoutWorkspace({ classId, editable = false }: StationLayoutProps) {
     const result = demo.submit(action, { expectedRevision: revision });
     setFeedback({
       failed: !result.success,
-      message: result.success ? 'Station change saved.' : result.error.message,
+      message: result.success
+        ? action.type === 'retireStation'
+          ? 'Station removed.'
+          : action.type === 'insertLayoutLine' ||
+              action.type === 'removeLayoutLine'
+            ? 'Rows and columns updated.'
+            : 'Station change saved.'
+        : result.error.message,
     });
     return result;
   };
@@ -332,6 +345,7 @@ function LayoutWorkspace({ classId, editable = false }: StationLayoutProps) {
             <SelectField
               label="Station to edit"
               value={station?.stationId}
+              ref={stationSelectRef}
               onChange={(event) => {
                 const selected = stations.find(
                   (item) => item.stationId === event.target.value,
@@ -363,8 +377,23 @@ function LayoutWorkspace({ classId, editable = false }: StationLayoutProps) {
                 disabled={!mapAvailable}
                 reasonId={mapAvailable ? undefined : unavailableId}
               />
+              <RemoveStationButton
+                station={station}
+                revision={demo.revision}
+                submit={submit}
+                onSuccess={() => {
+                  setChosenStationId(undefined);
+                  window.setTimeout(() => stationSelectRef.current?.focus(), 0);
+                }}
+              />
             </>
           )}
+          <LayoutLineForm
+            revision={demo.revision}
+            submit={submit}
+            disabled={!mapAvailable}
+            reasonId={mapAvailable ? undefined : unavailableId}
+          />
           <NewStationForm
             stationId={nextStationId(demo.state)}
             nextRow={Math.max(-1, ...stations.map((item) => item.row)) + 1}
@@ -401,15 +430,33 @@ function LayoutGrid({
     stationId: StationId;
     revision: number;
   }>();
-  const [inspected, setInspected] = useState<StationId>();
-  const inspectedStation = view.stations.find(
-    (item) => item.stationId === inspected,
+  const [inspectedPosition, setInspectedPosition] = useState<{
+    row: number;
+    column: number;
+  }>();
+  const [inspectedStationId, setInspectedStationId] = useState<StationId>();
+  const stationAtInspectedPosition = view.stations.find(
+    (item) =>
+      item.row === inspectedPosition?.row &&
+      item.column === inspectedPosition.column,
   );
+  const inspectedStation = inspectedStationId
+    ? view.stations.find((item) => item.stationId === inspectedStationId)
+    : stationAtInspectedPosition;
+  const inspectedEmpty = inspectedPosition && !inspectedStation;
+  const pickedStillExists =
+    !picked ||
+    view.stations.some((station) => station.stationId === picked.stationId);
+  const activePicked = pickedStillExists ? picked : undefined;
   const [announcement, setAnnouncement] = useState(
     editable
       ? 'Use arrows to navigate, Enter or Space to pick and drop, Escape to cancel.'
       : 'Read-only layout. Use arrows to inspect station states.',
   );
+  const layoutAnnouncement =
+    picked && !pickedStillExists
+      ? 'Station removed or no longer available. Pick another station to place.'
+      : announcement;
   const instructionsId = useId();
   const cells = useRef(new Map<string, HTMLButtonElement>());
   const rows = gridAxis([
@@ -422,11 +469,27 @@ function LayoutGrid({
   ]);
   const rowCount = rows[rows.length - 1] + 1;
   const columnCount = columns[columns.length - 1] + 1;
+  const focusNearestCell = (position: { row: number; column: number }) => {
+    window.setTimeout(() => {
+      const nearest = [...cells.current].reduce<{
+        key: string;
+        distance: number;
+      } | null>((best, [key]) => {
+        const [rowValue, columnValue] = key.split(':').map(Number);
+        const distance =
+          Math.abs(rowValue - position.row) +
+          Math.abs(columnValue - position.column);
+        return !best || distance < best.distance ? { key, distance } : best;
+      }, null);
+      if (nearest) cells.current.get(nearest.key)?.focus();
+    }, 0);
+  };
   const activate = (row: number, column: number) => {
     const station = view.stations.find(
       (item) => item.row === row && item.column === column,
     );
-    setInspected(station?.stationId);
+    setInspectedPosition({ row, column });
+    setInspectedStationId(station?.stationId);
     if (!editable) {
       setAnnouncement(
         station
@@ -435,7 +498,7 @@ function LayoutGrid({
       );
       return;
     }
-    if (!picked) {
+    if (!activePicked) {
       if (!station) {
         setAnnouncement('Empty cell. Pick a station first.');
         return;
@@ -449,9 +512,9 @@ function LayoutGrid({
     const result = submit(
       {
         type: 'placeStation',
-        payload: { stationId: picked.stationId, row, column },
+        payload: { stationId: activePicked.stationId, row, column },
       },
-      picked.revision,
+      activePicked.revision,
     );
     setPicked(undefined);
     setAnnouncement(
@@ -505,8 +568,8 @@ function LayoutGrid({
 
   return (
     <>
-      <p id={instructionsId}>{announcement}</p>
-      {picked && (
+      <p id={instructionsId}>{layoutAnnouncement}</p>
+      {activePicked && (
         <Button
           variant="secondary"
           onClick={() => {
@@ -591,7 +654,9 @@ function LayoutGrid({
                         aria-pressed={Boolean(
                           station &&
                           station.stationId ===
-                            (editable ? picked?.stationId : inspected),
+                            (editable
+                              ? activePicked?.stationId
+                              : inspectedStation?.stationId),
                         )}
                         className={`${styles.cell} ${station ? styles[station.state] : styles.empty}`}
                         onFocus={(event) => {
@@ -652,6 +717,42 @@ function LayoutGrid({
                 inspectedStation.reviewFlags.includes('memberInactive') && (
                   <p>Inactive member: staff review required</p>
                 )}
+              {editable && (
+                <RemoveStationButton
+                  station={inspectedStation}
+                  revision={demo.revision}
+                  submit={submit}
+                  onSuccess={() => {
+                    setPicked(undefined);
+                    setInspectedStationId(undefined);
+                    setAnnouncement(
+                      'Station removed. Pick another station to place.',
+                    );
+                    focusNearestCell({
+                      row: inspectedStation.row,
+                      column: inspectedStation.column,
+                    });
+                  }}
+                />
+              )}
+            </>
+          ) : inspectedEmpty ? (
+            <>
+              <p>
+                Empty cell at row {inspectedPosition.row}, column{' '}
+                {inspectedPosition.column}.
+              </p>
+              <p>Use quick actions to reshape the layout around this cell.</p>
+              {editable && (
+                <EmptyCellActions
+                  row={inspectedPosition.row}
+                  column={inspectedPosition.column}
+                  stations={view.stations}
+                  revision={demo.revision}
+                  submit={submit}
+                  onRemoveSuccess={focusNearestCell}
+                />
+              )}
             </>
           ) : (
             <p>Select a station to inspect its details.</p>
@@ -659,7 +760,7 @@ function LayoutGrid({
         </section>
       </div>
       <p role="status" aria-label="Layout interaction" className={styles.live}>
-        {announcement}
+        {layoutAnnouncement}
       </p>
     </>
   );
@@ -732,11 +833,218 @@ function StationDetailsForm({
   );
 }
 
+function lineIsEmpty(
+  stations: readonly Pick<Station, 'row' | 'column'>[],
+  axis: LayoutAxis,
+  index: number,
+) {
+  return !stations.some((station) => station[axis] === index);
+}
+
+function hasLineBeyond(
+  stations: readonly Pick<Station, 'row' | 'column'>[],
+  axis: LayoutAxis,
+  index: number,
+) {
+  return stations.some((station) => station[axis] > index);
+}
+
+function EmptyCellActions({
+  row,
+  column,
+  stations,
+  revision,
+  submit,
+  onRemoveSuccess,
+}: {
+  row: number;
+  column: number;
+  stations: readonly Pick<Station, 'row' | 'column'>[];
+  revision: number;
+  submit: Submit;
+  onRemoveSuccess: (position: { row: number; column: number }) => void;
+}) {
+  const [removing, setRemoving] = useState<{
+    axis: LayoutAxis;
+    index: number;
+    label: string;
+  }>();
+  const insert = (axis: LayoutAxis, index: number) =>
+    submit({ type: 'insertLayoutLine', payload: { axis, index } }, revision);
+  const remove = (axis: LayoutAxis, index: number) =>
+    submit({ type: 'removeLayoutLine', payload: { axis, index } }, revision);
+  const canRemoveRow =
+    lineIsEmpty(stations, 'row', row) && hasLineBeyond(stations, 'row', row);
+  const canRemoveColumn =
+    lineIsEmpty(stations, 'column', column) &&
+    hasLineBeyond(stations, 'column', column);
+  return (
+    <div className={styles.quickActions}>
+      <Button onClick={() => insert('row', row)}>Insert row above</Button>
+      <Button onClick={() => insert('column', column)}>
+        Insert column left
+      </Button>
+      {canRemoveRow && (
+        <Button
+          variant="danger"
+          onClick={() =>
+            setRemoving({ axis: 'row', index: row, label: `Remove row ${row}` })
+          }
+        >
+          Remove row {row}
+        </Button>
+      )}
+      {canRemoveColumn && (
+        <Button
+          variant="danger"
+          onClick={() =>
+            setRemoving({
+              axis: 'column',
+              index: column,
+              label: `Remove column ${column}`,
+            })
+          }
+        >
+          Remove column {column}
+        </Button>
+      )}
+      <ConfirmationDialog
+        open={removing !== undefined}
+        title="Remove empty layout line?"
+        description={
+          removing
+            ? `Remove ${removing.axis} ${removing.index}. This shifts later stations but never moves bookings.`
+            : ''
+        }
+        confirmLabel={removing?.label ?? 'Remove line'}
+        onCancel={() => setRemoving(undefined)}
+        onConfirm={() => {
+          if (!removing) return;
+          const result = remove(removing.axis, removing.index);
+          setRemoving(undefined);
+          if (result.success) onRemoveSuccess({ row, column });
+        }}
+      />
+    </div>
+  );
+}
+
 interface MapFormProps {
   readonly revision: number;
   readonly submit: Submit;
   readonly disabled: boolean;
   readonly reasonId?: string;
+}
+
+function RemoveStationButton({
+  station,
+  revision,
+  submit,
+  onSuccess,
+}: {
+  station: Pick<Station, 'stationId' | 'label'>;
+  revision: number;
+  submit: Submit;
+  onSuccess?: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  return (
+    <>
+      <Button variant="danger" onClick={() => setConfirming(true)}>
+        Remove station
+      </Button>
+      <ConfirmationDialog
+        open={confirming}
+        title="Remove station?"
+        description={`Remove ${station.label} from the active layout. Existing history keeps its label, but the station will no longer count toward capacity.`}
+        confirmLabel="Remove station"
+        onCancel={() => setConfirming(false)}
+        onConfirm={() => {
+          const result = submit(
+            {
+              type: 'retireStation',
+              payload: { stationId: station.stationId },
+            },
+            revision,
+          );
+          setConfirming(false);
+          if (result.success) onSuccess?.();
+        }}
+      />
+    </>
+  );
+}
+
+function LayoutLineForm({
+  revision,
+  submit,
+  disabled,
+  reasonId,
+}: MapFormProps) {
+  const [axis, setAxis] = useState<LayoutAxis>('row');
+  const [index, setIndex] = useState('0');
+  const [confirming, setConfirming] = useState(false);
+  const removeLabel = 'Remove empty row/column';
+  const submitLine = (type: 'insertLayoutLine' | 'removeLayoutLine') => {
+    if (disabled) return;
+    const result = submit(
+      {
+        type,
+        payload: { axis, index: coordinate(index) },
+      },
+      revision,
+    );
+    if (type === 'removeLayoutLine' || result.success) setConfirming(false);
+  };
+  return (
+    <form
+      noValidate
+      className={styles.form}
+      aria-label="Rows and columns"
+      onSubmit={(event) => event.preventDefault()}
+    >
+      <fieldset disabled={disabled} aria-describedby={reasonId}>
+        <legend>Rows and columns</legend>
+        <SelectField
+          label="Layout axis"
+          value={axis}
+          onChange={(event) => setAxis(event.target.value as LayoutAxis)}
+        >
+          <option value="row">Row</option>
+          <option value="column">Column</option>
+        </SelectField>
+        <InputField
+          label="Layout line index"
+          type="number"
+          min={0}
+          step={1}
+          required
+          value={index}
+          onChange={(event) => setIndex(event.target.value)}
+        />
+        <div className={styles.actions}>
+          <Button type="button" onClick={() => submitLine('insertLayoutLine')}>
+            Insert before
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
+            onClick={() => setConfirming(true)}
+          >
+            {removeLabel}
+          </Button>
+        </div>
+      </fieldset>
+      <ConfirmationDialog
+        open={confirming}
+        title="Remove empty layout line?"
+        description={`Remove ${axis} ${index}. This is allowed only when no station occupies that ${axis}.`}
+        confirmLabel={removeLabel}
+        onCancel={() => setConfirming(false)}
+        onConfirm={() => submitLine('removeLayoutLine')}
+      />
+    </form>
+  );
 }
 
 function PlacementForm({

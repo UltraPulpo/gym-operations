@@ -352,6 +352,42 @@ describe('demo-state selectors', () => {
     });
   });
 
+  it('uses retired station labels for retained booking history', () => {
+    const seed = createInitialDemoState();
+    const west = seed.stations.find(
+      (station) => station.stationId === ids.stations.west,
+    )!;
+    const state = {
+      ...seed,
+      stations: seed.stations.filter(
+        (station) => station.stationId !== ids.stations.west,
+      ),
+      retiredStations: [
+        ...seed.retiredStations,
+        {
+          stationId: west.stationId,
+          label: west.label,
+          pm5Serial: west.pm5Serial,
+          retiredAt: seed.clock.now,
+        },
+      ],
+    };
+
+    expect(
+      expectSuccess(selectPrintableRoster(state, ids.classes.full)),
+    ).toEqual({
+      classId: ids.classes.full,
+      entries: [
+        { memberDisplayName: 'Maya Chen', stationLabel: 'Rower 01' },
+        {
+          memberDisplayName: 'Jordan Brooks',
+          stationLabel: 'Rower 02 (removed)',
+        },
+        { memberDisplayName: 'Sam Patel', stationLabel: 'Rower 03' },
+      ],
+    });
+  });
+
   it('selects member, member bookings, members, staff, staff accounts, invitations, notifications, settings, clock and simulation', () => {
     const state = createInitialDemoState();
 
